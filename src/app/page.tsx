@@ -130,7 +130,14 @@ export default function Home() {
       const messages = conversationMode ? conversationHistory : [];
       
       // Simulate execution steps for parallel agents
-      const steps = [];
+      interface ExecutionStep {
+        id: number;
+        name: string;
+        status: 'active' | 'completed' | 'pending';
+        duration: string | null;
+      }
+      
+      const steps: ExecutionStep[] = [];
       if (selectedPattern === 'parallel' && parallelAgents > 1) {
         for (let i = 1; i <= parallelAgents; i++) {
           steps.push({ 
