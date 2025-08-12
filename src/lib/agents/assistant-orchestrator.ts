@@ -228,9 +228,11 @@ export class AssistantOrchestrator {
   /**
    * Upload a file for use with assistants
    */
-  async uploadFile(file: Buffer | Blob, purpose: 'assistants' | 'fine-tune'): Promise<string> {
+  async uploadFile(file: any, purpose: 'assistants' | 'fine-tune'): Promise<string> {
+    // The OpenAI client expects an Uploadable type
+    // We'll pass it through directly and let the client handle it
     const uploadedFile = await this.client.files.create({
-      file: file,
+      file: file as any,
       purpose: purpose,
     });
     return uploadedFile.id;
