@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 // ============= Document Types & Schemas =============
 
-export const DocumentMetadata = z.object({
+export const DocumentMetadataSchema = z.object({
   id: z.string(),
   title: z.string(),
   type: z.enum(['pdf', 'docx', 'xlsx', 'email', 'code', 'image', 'audio', 'video']),
@@ -21,12 +21,16 @@ export const DocumentMetadata = z.object({
   checksum: z.string(),
 });
 
-export const DocumentFingerprint = z.object({
+export const DocumentFingerprintSchema = z.object({
   structural: z.string(), // Document structure hash
   semantic: z.string(),   // Meaning-based hash
   statistical: z.string(), // Statistical properties
   relational: z.array(z.string()), // Related doc IDs
 });
+
+// Extract types from schemas
+export type DocumentMetadata = z.infer<typeof DocumentMetadataSchema>;
+export type DocumentFingerprint = z.infer<typeof DocumentFingerprintSchema>;
 
 // ============= Core Document Processor =============
 
