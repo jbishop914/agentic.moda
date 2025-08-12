@@ -1,6 +1,7 @@
 // src/app/api/orchestrate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { AVAILABLE_TOOLS, convertToolsForOpenAI } from '@/lib/tools/function-tools';
 
 // Orchestration strategies
 const ORCHESTRATION_STRATEGIES = {
@@ -390,7 +391,9 @@ export async function POST(request: NextRequest) {
       };
 
     } else {
-      // SIMPLE SINGLE AGENT (unchanged)
+      // SIMPLE SINGLE AGENT WITH FUNCTION CALLING
+      const openAITools = tools && tools.length > 0 ? convertToolsForOpenAI(tools) : [];
+      
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -402,11 +405,8 @@ export async function POST(request: NextRequest) {
           messages,
           temperature: 0.7,
           max_tokens: 1000,
-          ...(tools && tools.length > 0 && {
-            tools: tools.map((toolId: string) => ({
-              type: 'function',
-              function: getToolDefinition(toolId)
-            })),
+          ...(openAITools.length > 0 && {
+            tools: openAITools,
             tool_choice: 'auto'
           })
         })
@@ -418,7 +418,67 @@ export async function POST(request: NextRequest) {
       }
 
       const data = await response.json();
-      const output = data.choices[0].message.content;
+      let output = data.choices[0].message.content;
+      
+      // Handle function calls if present
+      if (data.choices[0].message.tool_calls) {
+        const toolCalls = data.choices[0].message.tool_calls;
+        const toolResults = [];
+        
+        for (const toolCall of toolCalls) {
+          const tool = AVAILABLE_TOOLS[tools.find((t: string) => 
+            AVAILABLE_TOOLS[t]?.name === toolCall.function.name
+          ) || ''];
+          
+          if (tool) {
+            try {
+              const params = JSON.parse(toolCall.function.arguments);
+              const result = await tool.execute(params);
+              toolResults.push({
+                tool: toolCall.function.name,
+                result
+              });
+            } catch (error: any) {
+              toolResults.push({
+                tool: toolCall.function.name,
+                error: error.message
+              });
+            }
+          }
+        }
+        
+        // If tools were called, make another call with the results
+        if (toolResults.length > 0) {
+          const followUpMessages = [
+            ...messages,
+            data.choices[0].message,
+            ...toolResults.map(tr => ({
+              role: 'tool' as const,
+              content: JSON.stringify(tr.result),
+              tool_call_id: toolCalls.find((tc: any) => tc.function.name === tr.tool)?.id
+            }))
+          ];
+          
+          const followUpResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4-turbo-preview',
+              messages: followUpMessages,
+              temperature: 0.7,
+              max_tokens: 1000
+            })
+          });
+          
+          const followUpData = await followUpResponse.json();
+          output = `${followUpData.choices[0].message.content}\n\n**Tools Used:**\n${toolResults.map(tr => 
+            `- ${tr.tool}: ${JSON.stringify(tr.result).substring(0, 100)}...`
+          ).join('\n')}`;
+        }
+      }
 
       result = {
         output,
@@ -466,54 +526,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Tool definitions for OpenAI function calling
-function getToolDefinition(toolId: string) {
-  const tools: Record<string, any> = {
-    web_search: {
-      name: 'web_search',
-      description: 'Search the web for information',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: { type: 'string', description: 'Search query' }
-        },
-        required: ['query']
-      }
-    },
-    code_exec: {
-      name: 'execute_code',
-      description: 'Execute Python code',
-      parameters: {
-        type: 'object',
-        properties: {
-          code: { type: 'string', description: 'Python code to execute' }
-        },
-        required: ['code']
-      }
-    },
-    data_analysis: {
-      name: 'analyze_data',
-      description: 'Analyze and visualize data',
-      parameters: {
-        type: 'object',
-        properties: {
-          data: { type: 'array', description: 'Data to analyze' },
-          operation: { type: 'string', description: 'Analysis operation' }
-        },
-        required: ['data', 'operation']
-      }
-    }
-  };
-
-  return tools[toolId] || tools.web_search;
-}
-
 export async function GET() {
   return NextResponse.json({
     message: 'Orchestration API is running',
     patterns: ['simple', 'parallel', 'structured', 'feedback'],
     strategies: ['decompose', 'perspectives', 'power'],
-    features: ['task-decomposition', 'multi-perspective', 'true-parallel-execution', 'feedback-loops'],
-    version: '3.0.0',
+    availableTools: Object.keys(AVAILABLE_TOOLS),
+    features: ['task-decomposition', 'multi-perspective', 'true-parallel-execution', 'feedback-loops', 'function-calling'],
+    version: '3.1.0',
   });
 }

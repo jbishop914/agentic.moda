@@ -28,14 +28,44 @@ import {
   Hash
 } from 'lucide-react';
 
-// Tool definitions
+// Tool definitions with real functionality
 const AVAILABLE_TOOLS = [
-  { id: 'web_search', name: 'Web Search', description: 'Search the internet for information' },
-  { id: 'code_exec', name: 'Code Execution', description: 'Run Python code' },
-  { id: 'data_analysis', name: 'Data Analysis', description: 'Analyze and visualize data' },
-  { id: 'file_ops', name: 'File Operations', description: 'Read/write files' },
-  { id: 'api_call', name: 'API Calling', description: 'Make HTTP requests' },
-  { id: 'db_query', name: 'Database Query', description: 'Query SQL databases' },
+  { 
+    id: 'api_call', 
+    name: 'API Calling', 
+    description: 'Make HTTP requests to any API',
+    icon: '🌐'
+  },
+  { 
+    id: 'web_scrape', 
+    name: 'Web Scraping', 
+    description: 'Extract content from websites',
+    icon: '🕷️'
+  },
+  { 
+    id: 'database_query', 
+    name: 'Database Query', 
+    description: 'Query SQL databases',
+    icon: '🗄️'
+  },
+  { 
+    id: 'calculate', 
+    name: 'Calculator', 
+    description: 'Math and statistical analysis',
+    icon: '🧮'
+  },
+  { 
+    id: 'file_operations', 
+    name: 'File Operations', 
+    description: 'Read/write files',
+    icon: '📁'
+  },
+  { 
+    id: 'transform_data', 
+    name: 'Data Transform', 
+    description: 'Convert between formats (JSON, CSV, etc)',
+    icon: '🔄'
+  },
 ];
 
 export default function Home() {
@@ -419,10 +449,13 @@ export default function Home() {
                         className="mt-0.5 w-3.5 h-3.5 rounded border-slate-600 bg-slate-800 text-slate-400 focus:ring-slate-600 focus:ring-offset-0"
                       />
                       <div className="flex-1">
-                        <div className="text-xs text-slate-400 group-hover:text-slate-300">
-                          {tool.name}
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{tool.icon}</span>
+                          <div className="text-xs text-slate-400 group-hover:text-slate-300">
+                            {tool.name}
+                          </div>
                         </div>
-                        <div className="text-[10px] text-slate-600">
+                        <div className="text-[10px] text-slate-600 ml-7">
                           {tool.description}
                         </div>
                       </div>
