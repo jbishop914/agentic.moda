@@ -43,3 +43,9 @@ next-env.d.ts
 .vscode/
 .idea/
 DOCINTEL_BUSINESS_PLAN.md
+
+# Backup/temporary folders
+.document-intelligence-backup/
+document-intelligence-temp/
+*.backup/
+*.temp/
