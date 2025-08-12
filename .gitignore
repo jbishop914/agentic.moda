@@ -42,3 +42,4 @@ next-env.d.ts
 # IDE
 .vscode/
 .idea/
+DOCINTEL_BUSINESS_PLAN.md
