@@ -127,7 +127,7 @@ export class AssistantOrchestrator {
       onStatusUpdate?: (status: string) => void;
       timeout?: number;
     }
-  ): Promise<OpenAI.Beta.Threads.Messages.CursorPage<OpenAI.Beta.Threads.Messages.Message>> {
+  ): Promise<any> {
     const startTime = Date.now();
     const timeout = options?.timeout || 300000; // 5 minutes default
 
@@ -324,8 +324,8 @@ export class MultiAgentOrchestrator {
       );
 
       // Get the latest assistant message
-      const latestMessage = messages.data.find(m => m.role === 'assistant');
-      if (latestMessage && latestMessage.content[0].type === 'text') {
+      const latestMessage = messages.data.find((m: any) => m.role === 'assistant');
+      if (latestMessage && latestMessage.content[0]?.type === 'text') {
         let output = latestMessage.content[0].text.value;
         
         // Process output if handler provided
@@ -378,8 +378,8 @@ export class MultiAgentOrchestrator {
 
     // Extract results
     for (const exec of executions) {
-      const latestMessage = exec.messages.data.find(m => m.role === 'assistant');
-      if (latestMessage && latestMessage.content[0].type === 'text') {
+      const latestMessage = exec.messages.data.find((m: any) => m.role === 'assistant');
+      if (latestMessage && latestMessage.content[0]?.type === 'text') {
         results.set(exec.agent, latestMessage.content[0].text.value);
       }
     }
@@ -418,8 +418,8 @@ export class MultiAgentOrchestrator {
       const workerRun = await this.orchestrator.runAssistant(workerId, this.sharedThread!) as OpenAI.Beta.Threads.Run;
       const workerMessages = await this.orchestrator.waitForCompletion(this.sharedThread!, workerRun.id);
       
-      const workerOutput = workerMessages.data.find(m => m.role === 'assistant');
-      if (workerOutput && workerOutput.content[0].type === 'text') {
+      const workerOutput = workerMessages.data.find((m: any) => m.role === 'assistant');
+      if (workerOutput && workerOutput.content[0]?.type === 'text') {
         currentOutput = workerOutput.content[0].text.value;
       }
 
@@ -435,8 +435,8 @@ export class MultiAgentOrchestrator {
       const judgeRun = await this.orchestrator.runAssistant(judgeId, this.sharedThread!) as OpenAI.Beta.Threads.Run;
       const judgeMessages = await this.orchestrator.waitForCompletion(this.sharedThread!, judgeRun.id);
       
-      const judgeOutput = judgeMessages.data.find(m => m.role === 'assistant');
-      if (judgeOutput && judgeOutput.content[0].type === 'text') {
+      const judgeOutput = judgeMessages.data.find((m: any) => m.role === 'assistant');
+      if (judgeOutput && judgeOutput.content[0]?.type === 'text') {
         const judgeFeedback = judgeOutput.content[0].text.value;
         feedback.push(judgeFeedback);
 
