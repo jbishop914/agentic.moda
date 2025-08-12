@@ -127,7 +127,7 @@ export class AssistantOrchestrator {
       onStatusUpdate?: (status: string) => void;
       timeout?: number;
     }
-  ): Promise<OpenAI.Beta.Threads.Messages> {
+  ): Promise<OpenAI.Beta.Threads.Messages.CursorPage<OpenAI.Beta.Threads.Messages.Message>> {
     const startTime = Date.now();
     const timeout = options?.timeout || 300000; // 5 minutes default
 
