@@ -8,14 +8,7 @@ export interface AssistantConfig {
   name: string;
   instructions: string;
   model: string;
-  tools?: Array<{
-    type: 'code_interpreter' | 'retrieval' | 'function';
-    function?: {
-      name: string;
-      description: string;
-      parameters: any;
-    };
-  }>;
+  tools?: OpenAI.Beta.AssistantTool[];
   file_ids?: string[];
   metadata?: Record<string, any>;
 }
@@ -49,10 +42,10 @@ export class AssistantOrchestrator {
       name: config.name,
       instructions: config.instructions,
       model: config.model,
-      tools: config.tools || [],
+      tools: config.tools as OpenAI.Beta.AssistantTool[] || [],
       file_ids: config.file_ids,
       metadata: config.metadata,
-    });
+    } as OpenAI.Beta.AssistantCreateParams);
 
     this.assistants.set(assistant.id, assistant);
     return assistant.id;
