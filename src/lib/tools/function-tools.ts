@@ -174,15 +174,15 @@ export const calculationTool: Tool = {
       
       if (params.operation === 'statistical' && params.data) {
         const data = params.data;
-        const mean = data.reduce((a, b) => a + b, 0) / data.length;
-        const variance = data.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / data.length;
+        const mean = data.reduce((a: number, b: number) => a + b, 0) / data.length;
+        const variance = data.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / data.length;
         const stdDev = Math.sqrt(variance);
         const min = Math.min(...data);
         const max = Math.max(...data);
         
         return {
           mean,
-          median: data.sort((a, b) => a - b)[Math.floor(data.length / 2)],
+          median: data.sort((a: number, b: number) => a - b)[Math.floor(data.length / 2)],
           variance,
           standardDeviation: stdDev,
           min,
@@ -287,7 +287,7 @@ export const dataTransformTool: Tool = {
           break;
         case 'csv':
           // Simple CSV parsing
-          const lines = params.data.split('\n');
+          const lines = (params.data as string).split('\n');
           const headers = lines[0].split(',');
           parsed = lines.slice(1).map((line: string) => {
             const values = line.split(',');
