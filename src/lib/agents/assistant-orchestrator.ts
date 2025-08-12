@@ -9,14 +9,24 @@ export interface AssistantConfig {
   instructions: string;
   model: string;
   tools?: OpenAI.Beta.AssistantTool[];
-  file_ids?: string[];
+  tool_resources?: {
+    code_interpreter?: {
+      file_ids?: string[];
+    };
+    file_search?: {
+      vector_store_ids?: string[];
+    };
+  };
   metadata?: Record<string, any>;
 }
 
 export interface ThreadMessage {
   role: 'user' | 'assistant';
   content: string;
-  file_ids?: string[];
+  attachments?: Array<{
+    file_id: string;
+    tools: Array<{ type: 'code_interpreter' | 'file_search' }>;
+  }>;
   metadata?: Record<string, any>;
 }
 
@@ -42,8 +52,8 @@ export class AssistantOrchestrator {
       name: config.name,
       instructions: config.instructions,
       model: config.model,
-      tools: config.tools as OpenAI.Beta.AssistantTool[] || [],
-      file_ids: config.file_ids,
+      tools: config.tools || [],
+      tool_resources: config.tool_resources,
       metadata: config.metadata,
     } as OpenAI.Beta.AssistantCreateParams);
 
@@ -70,9 +80,9 @@ export class AssistantOrchestrator {
     await this.client.beta.threads.messages.create(threadId, {
       role: message.role,
       content: message.content,
-      file_ids: message.file_ids,
+      attachments: message.attachments,
       metadata: message.metadata,
-    });
+    } as OpenAI.Beta.Threads.MessageCreateParams);
   }
 
   /**
@@ -229,11 +239,11 @@ export class AssistantOrchestrator {
   /**
    * Create a vector store for retrieval
    */
-  async createVectorStore(name: string, file_ids: string[]): Promise<string> {
+  async createVectorStore(name: string, file_ids?: string[]): Promise<string> {
     const vectorStore = await this.client.beta.vectorStores.create({
       name,
-      file_ids,
-    });
+      file_ids: file_ids || [],
+    } as OpenAI.Beta.VectorStoreCreateParams);
     return vectorStore.id;
   }
 
