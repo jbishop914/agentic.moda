@@ -219,7 +219,7 @@ export async function multiAgentCollaborationExample(apiKey: string) {
       name: 'Researcher',
       instructions: 'You are a research specialist. Gather and analyze information from various sources.',
       model: 'gpt-4-turbo-preview',
-      tools: [{ type: 'retrieval' }],
+      tools: [{ type: 'file_search' }],
     },
     {
       name: 'Writer',
