@@ -101,7 +101,11 @@ export class OpenAIAgent {
     const messages = [...options.messages];
 
     while (iterations < maxIterations) {
-      const completion = await this.client.chat.completions.create(options);
+      const completion = await this.client.chat.completions.create({
+        ...options,
+        stream: false  // Ensure we're not getting a stream
+      }) as OpenAI.Chat.ChatCompletion;
+      
       const message = completion.choices[0].message;
       
       messages.push(message);
