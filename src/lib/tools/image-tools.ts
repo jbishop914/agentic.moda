@@ -213,12 +213,13 @@ export const replicateImageTool: Tool = {
         };
       }
 
-      // Create prediction
+      // Create prediction with sync mode for faster response
       const response = await fetch('https://api.replicate.com/v1/predictions', {
         method: 'POST',
         headers: {
           'Authorization': `Token ${apiToken}`,
           'Content-Type': 'application/json',
+          'Prefer': 'wait=10', // Wait up to 10 seconds for completion
         },
         body: JSON.stringify({
           version: modelConfig.version,
