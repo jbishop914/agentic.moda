@@ -23,6 +23,7 @@ export default function CreativePage() {
   const [editPrompt, setEditPrompt] = useState('');
   const [editStrength, setEditStrength] = useState(0.85);
   const [error, setError] = useState('');
+  const [lastGeneratedImage, setLastGeneratedImage] = useState<GeneratedImage | null>(null);
 
   const models = {
     // Black Forest Labs Flux Models
@@ -103,6 +104,11 @@ export default function CreativePage() {
       }));
 
       setGeneratedImages([...newImages, ...generatedImages]);
+      
+      // Set the first/most recent image as the last generated for easy editing
+      if (newImages.length > 0) {
+        setLastGeneratedImage(newImages[0]);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to generate image');
     } finally {
@@ -154,6 +160,13 @@ export default function CreativePage() {
       setError(err.message || 'Failed to edit image');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const loadGeneratedImage = () => {
+    if (lastGeneratedImage) {
+      setEditingImage(lastGeneratedImage.url);
+      setError('');
     }
   };
 
@@ -404,13 +417,25 @@ export default function CreativePage() {
                   <label className="text-xs uppercase tracking-wider text-gray-400 mb-2 block">
                     Image URL
                   </label>
-                  <input
-                    type="text"
-                    value={editingImage}
-                    onChange={(e) => setEditingImage(e.target.value)}
-                    placeholder="Paste image URL to edit..."
-                    className="w-full bg-[#0f1214] border border-slate-800 rounded-lg px-4 py-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-600"
-                  />
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={editingImage}
+                      onChange={(e) => setEditingImage(e.target.value)}
+                      placeholder="Paste image URL to edit..."
+                      className="w-full bg-[#0f1214] border border-slate-800 rounded-lg px-4 py-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-600"
+                    />
+                    
+                    {lastGeneratedImage && (
+                      <button
+                        onClick={loadGeneratedImage}
+                        className="w-full py-2 bg-gradient-to-r from-emerald-700/20 to-emerald-600/20 border border-emerald-600/30 text-emerald-400 rounded-lg font-medium hover:from-emerald-600/30 hover:to-emerald-500/30 transition-all flex items-center justify-center gap-2 text-sm"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Load Generated Image ({lastGeneratedImage.model})
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mb-6">
@@ -494,24 +519,51 @@ export default function CreativePage() {
             ) : (
               <div className="grid grid-cols-2 gap-4 max-h-[600px] overflow-y-auto">
                 {generatedImages.map((image, index) => (
-                  <div key={index} className="group relative">
+                  <div key={index} className={`group relative rounded-lg overflow-hidden ${
+                    editingImage === image.url ? 'ring-2 ring-emerald-500' : ''
+                  }`}>
                     <img
                       src={image.url}
                       alt={image.prompt}
-                      className="w-full h-48 object-cover rounded-lg"
+                      className="w-full h-48 object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                    
+                    {/* Currently loaded for editing indicator */}
+                    {editingImage === image.url && (
+                      <div className="absolute top-2 left-2 px-2 py-1 bg-emerald-600 text-white text-xs rounded flex items-center gap-1">
+                        <Wand2 className="w-3 h-3" />
+                        Ready to Edit
+                      </div>
+                    )}
+                    
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* Quick Edit Button */}
+                      <div className="absolute top-2 right-2 flex gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingImage(image.url);
+                            setActiveTab('edit');
+                            setLastGeneratedImage(image);
+                          }}
+                          className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded flex items-center gap-1 transition-colors"
+                        >
+                          <Wand2 className="w-3 h-3" />
+                          Edit This
+                        </button>
+                        <a
+                          href={image.url}
+                          download
+                          className="p-1.5 bg-black/50 hover:bg-black/70 text-white rounded transition-colors"
+                        >
+                          <Download className="w-3 h-3" />
+                        </a>
+                      </div>
+                      
                       <div className="absolute bottom-0 left-0 right-0 p-3">
                         <p className="text-xs text-white mb-1 line-clamp-2">{image.prompt}</p>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-400">{models[image.model as keyof typeof models]?.name}</span>
-                          <a
-                            href={image.url}
-                            download
-                            className="text-white hover:text-gray-300 transition-colors"
-                          >
-                            <Download className="w-4 h-4" />
-                          </a>
+                          <span className="text-xs text-gray-500">{new Date(image.timestamp).toLocaleTimeString()}</span>
                         </div>
                       </div>
                     </div>
