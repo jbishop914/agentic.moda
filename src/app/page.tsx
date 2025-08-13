@@ -491,7 +491,7 @@ export default function Home() {
 
               {/* Main Nav */}
               <nav className="flex items-center gap-1">
-                {['orchestrate', 'agents', 'creative', 'map', 'workflows', 'architecture'].map((view) => (
+                {['orchestrate', 'agents', 'creative', 'map', 'workflows', 'architecture', 'dataworkshop'].map((view) => (
                   <button
                     key={view}
                     onClick={() => {
@@ -501,6 +501,8 @@ export default function Home() {
                         window.location.href = '/creative';
                       } else if (view === 'architecture') {
                         window.location.href = '/architecture';
+                      } else if (view === 'dataworkshop') {
+                        window.location.href = '/dataworkshop';
                       } else {
                         setActiveView(view);
                         setActiveSubView(view === 'orchestrate' ? 'playground' : '');
@@ -526,6 +528,12 @@ export default function Home() {
                       <span className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5" />
                         {view}
+                      </span>
+                    ) : view === 'dataworkshop' ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-yellow-400">⚡</span>
+                        Dataworkshop
+                        <span className="text-xs bg-green-500 text-black px-1 rounded font-bold">FAST</span>
                       </span>
                     ) : (
                       view

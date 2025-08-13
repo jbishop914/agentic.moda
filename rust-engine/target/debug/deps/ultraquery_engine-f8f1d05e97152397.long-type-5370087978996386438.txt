@@ -1,0 +1,2 @@
+fn(axum::extract::State<AppState>, Json<types::SearchRequest>) -> impl std::future::Future<Output = impl IntoResponse> {search_documents}
+fn(axum::extract::State<AppState>, Json<types::SearchRequest>) -> impl std::future::Future<Output = impl IntoResponse> {search_documents}: Handler<_, _>

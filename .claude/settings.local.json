@@ -3,7 +3,10 @@
     "allow": [
       "WebFetch(domain:replicate.com)",
       "Bash(npm run build:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(export PATH=\"$HOME/.cargo/bin:$PATH\")",
+      "Bash(cargo check:*)",
+      "Bash(timeout 5 cargo run)"
     ],
     "deny": [],
     "ask": []
