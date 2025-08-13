@@ -28,7 +28,7 @@ import {
   Hash,
   Image,
   Github,
-  Home,
+  Home as HomeIcon,
   Palette,
   FileText,
   Brain,
@@ -1187,7 +1187,7 @@ export default function Home() {
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
                       architectureImages.floorplan ? 'bg-emerald-600' : 'bg-slate-700'
                     }`}>
-                      <Home className="w-5 h-5 text-white" />
+                      <HomeIcon className="w-5 h-5 text-white" />
                     </div>
                     <div>
                       <div className="text-xs font-medium text-slate-300">Floorplan Generator</div>
@@ -1301,7 +1301,7 @@ export default function Home() {
                         <div className="text-[10px] text-slate-600 mb-2">Floorplan</div>
                         <div className="aspect-square bg-slate-800 rounded-lg overflow-hidden">
                           <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 animate-pulse flex items-center justify-center">
-                            <Home className="w-8 h-8 text-slate-600" />
+                            <HomeIcon className="w-8 h-8 text-slate-600" />
                           </div>
                         </div>
                       </div>
