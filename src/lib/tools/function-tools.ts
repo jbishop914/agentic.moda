@@ -2,6 +2,8 @@
 // Advanced function calling implementation for agents
 
 import { z } from 'zod';
+import { GITHUB_TOOLS } from './github-tools';
+import { IMAGE_GENERATION_TOOLS } from './image-tools';
 
 // Base tool interface
 export interface Tool {
@@ -357,6 +359,8 @@ export const AVAILABLE_TOOLS: Record<string, Tool> = {
   calculate: calculationTool,
   file_operations: fileOperationsTool,
   transform_data: dataTransformTool,
+  ...GITHUB_TOOLS,
+  ...IMAGE_GENERATION_TOOLS,
 };
 
 // Helper function to convert tools for OpenAI format
