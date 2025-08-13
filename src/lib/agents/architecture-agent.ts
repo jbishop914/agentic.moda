@@ -112,11 +112,34 @@ export type ArchitecturalSpec = z.infer<typeof ArchitecturalSpecSchema>;
 
 export class ArchitectureDesignSystem {
   private visionParser: OpenAIAgent;
+  private salesmanAgent: OpenAIAgent;
+  private qualityJudge: OpenAIAgent;
   private floorplanGenerator: any;
   private renderGenerator: any;
 
   constructor(openaiKey: string, replicateKey: string) {
-    // Agent 1: Vision Parser - Converts natural language to structured JSON
+    // Agent 1: Salesman/Orchestrator - Guides clients and gathers requirements
+    this.salesmanAgent = new OpenAIAgent(openaiKey, {
+      model: 'gpt-4-turbo-preview',
+      temperature: 0.7, // Higher temperature for more natural conversation
+      systemPrompt: `You are a professional architectural consultant and salesman. Your role is to:
+
+1. **Listen carefully** to client visions and requirements
+2. **Ask clarifying questions** to gather missing information
+3. **Explain the process** of turning their vision into reality
+4. **Guide them through** what information you need to create their dream home
+5. **Be enthusiastic and professional** - you're selling a premium service
+
+When a client describes their vision, analyze what they've provided and what's missing. Then:
+- Acknowledge what they've shared
+- Ask specific questions about missing details (size, style, rooms, features, budget)
+- Explain what you'll create for them (detailed plans, 3D renders, etc.)
+- Build excitement about the final result
+
+Be conversational, professional, and thorough. Don't just accept vague descriptions - dig deeper to get the details needed for a perfect design.`,
+    });
+
+    // Agent 2: Vision Parser - Converts natural language to structured JSON
     this.visionParser = new OpenAIAgent(openaiKey, {
       model: 'gpt-4-turbo-preview',
       temperature: 0.3, // Low temperature for consistency
@@ -135,9 +158,140 @@ export class ArchitectureDesignSystem {
       responseFormat: ArchitecturalSpecSchema,
     });
 
+    // Agent 3: Quality Judge - Reviews work before client presentation
+    this.qualityJudge = new OpenAIAgent(openaiKey, {
+      model: 'gpt-4-turbo-preview',
+      temperature: 0.4, // Balanced for analytical thinking
+      systemPrompt: `You are the Chief Architect and Quality Control Manager. Your role is to:
+
+1. **Review all design work** before it goes to the client
+2. **Compare specifications against original client vision** for accuracy
+3. **Identify discrepancies** between client requirements and generated designs
+4. **Provide detailed feedback** to the design team for improvements
+5. **Ensure professional quality** standards are met
+
+When reviewing work, analyze:
+- Does the specification match the client's stated requirements?
+- Are room sizes and layouts practical and functional?
+- Do the style choices align with client preferences?
+- Are there any architectural inconsistencies or problems?
+- Is the design buildable and up to professional standards?
+
+Provide constructive feedback for improvements or approve for client presentation.`,
+    });
+
     // Store keys for image generation
     this.floorplanGenerator = { replicateKey };
     this.renderGenerator = { replicateKey };
+  }
+
+  /**
+   * Consultation Mode: Salesman agent analyzes vision and guides client
+   */
+  async consultationMode(vision: string): Promise<{
+    success: boolean;
+    consultation: string;
+    questions: string[];
+    readiness: 'ready' | 'needs_more_info';
+    completeness: number;
+    nextSteps: string;
+  }> {
+    const prompt = `A client has shared their vision for a home design project:
+
+"${vision}"
+
+As their architectural consultant, analyze what they've provided and respond with:
+
+1. Professional acknowledgment of their vision
+2. Assessment of what information is complete vs. missing
+3. Specific questions to gather missing details (dimensions, room count, style preferences, budget, etc.)
+4. Explanation of our design process and what they'll receive
+5. Next steps to move forward
+
+Be enthusiastic but thorough. If their vision is complete enough to proceed, let them know. If not, guide them on what else you need.`;
+
+    const consultation = await this.salesmanAgent.execute(prompt);
+
+    // Analyze completeness
+    const completeness = this.assessVisionCompleteness(vision);
+    const readiness = completeness >= 0.7 ? 'ready' : 'needs_more_info';
+    
+    const questions = this.generateFollowUpQuestions(vision);
+
+    return {
+      success: true,
+      consultation: consultation || 'Thank you for sharing your vision! Let me analyze this and provide some guidance.',
+      questions,
+      readiness,
+      completeness: Math.round(completeness * 100),
+      nextSteps: readiness === 'ready' 
+        ? 'We have enough information to begin creating your architectural designs!' 
+        : 'Let\'s gather a few more details to ensure we create the perfect design for you.'
+    };
+  }
+
+  /**
+   * Assess how complete a vision description is
+   */
+  private assessVisionCompleteness(vision: string): number {
+    const visionLower = vision.toLowerCase();
+    let score = 0.2; // Base score for providing any description
+    
+    // Check for key information categories
+    const categories = [
+      { patterns: [/\d+\s*(sq|square)\s*(ft|feet)/i, /footprint/i], weight: 0.15, name: 'size' },
+      { patterns: [/\d+\s*stor/i, /single|two|three/i], weight: 0.1, name: 'stories' },
+      { patterns: [/bedroom|bath|kitchen|living|office/i], weight: 0.15, name: 'rooms' },
+      { patterns: [/colonial|modern|traditional|contemporary|victorian/i], weight: 0.1, name: 'style' },
+      { patterns: [/\d+ft\s*x\s*\d+ft/i, /width|depth|length/i], weight: 0.15, name: 'dimensions' },
+      { patterns: [/budget|cost|\$\d+/i], weight: 0.1, name: 'budget' },
+      { patterns: [/materials|brick|wood|stone|siding/i], weight: 0.05, name: 'materials' }
+    ];
+    
+    for (const category of categories) {
+      const hasInfo = category.patterns.some(pattern => pattern.test(visionLower));
+      if (hasInfo) score += category.weight;
+    }
+    
+    return Math.min(score, 1.0);
+  }
+
+  /**
+   * Generate follow-up questions based on missing information
+   */
+  private generateFollowUpQuestions(vision: string): string[] {
+    const visionLower = vision.toLowerCase();
+    const questions: string[] = [];
+    
+    if (!/\d+\s*(sq|square)\s*(ft|feet)/i.test(visionLower) && !/footprint/i.test(visionLower)) {
+      questions.push('What\'s your target square footage or building footprint?');
+    }
+    
+    if (!/\d+ft\s*x\s*\d+ft/i.test(visionLower) && !/width|depth|length/i.test(visionLower)) {
+      questions.push('Do you have specific lot dimensions or building size requirements?');
+    }
+    
+    if (!/(colonial|modern|traditional|contemporary|victorian|minimalist|industrial)/i.test(visionLower)) {
+      questions.push('What architectural style appeals to you most?');
+    }
+    
+    if (!/budget|cost|\$\d+/i.test(visionLower)) {
+      questions.push('What\'s your target budget range for this project?');
+    }
+    
+    if (!/(bedroom.*\d+|\d+.*bedroom)/i.test(visionLower)) {
+      questions.push('How many bedrooms do you need?');
+    }
+    
+    if (!/(bathroom.*\d+|\d+.*bathroom)/i.test(visionLower)) {
+      questions.push('How many bathrooms would you like?');
+    }
+    
+    if (!/materials|exterior|siding|roofing/i.test(visionLower)) {
+      questions.push('Do you have preferences for exterior materials or finishes?');
+    }
+    
+    return questions.slice(0, 5); // Limit to 5 questions to avoid overwhelming
   }
 
   /**
@@ -284,6 +438,483 @@ export class ArchitectureDesignSystem {
       default:
         return '';
     }
+  }
+
+  /**
+   * Iterative Refinement: Client provides feedback and requests changes
+   */
+  async refineDesign(
+    originalSpec: ArchitecturalSpec,
+    feedback: string,
+    currentImages?: { floorplan?: string; renders?: Array<{ type: string; url: string }> }
+  ): Promise<{
+    success: boolean;
+    updatedSpec: ArchitecturalSpec;
+    changesExplanation: string;
+    newFloorplan?: string;
+    newRenders?: Array<{ type: string; url: string }>;
+  }> {
+    const refinementPrompt = `You are refining an architectural design based on client feedback.
+
+Original Specification:
+${JSON.stringify(originalSpec, null, 2)}
+
+Client Feedback:
+"${feedback}"
+
+Based on this feedback, create an updated architectural specification that addresses their concerns while maintaining structural integrity and good design principles.
+
+Key areas to consider:
+1. Room sizes and layout adjustments
+2. Style and aesthetic changes
+3. Feature additions or modifications
+4. Structural feasibility
+5. Cost implications of changes
+
+Provide the updated specification and explain what changes you made and why.`;
+
+    try {
+      const updatedSpecRaw = await this.visionParser.execute(refinementPrompt, {
+        structuredOutput: true,
+      });
+      
+      const updatedSpec = typeof updatedSpecRaw === 'string' 
+        ? JSON.parse(updatedSpecRaw) 
+        : updatedSpecRaw;
+
+      const validatedSpec = ArchitecturalSpecSchema.parse(updatedSpec);
+
+      // Generate explanation of changes
+      const changesPrompt = `Compare these two architectural specifications and explain the key changes made:
+
+BEFORE: ${JSON.stringify(originalSpec, null, 2)}
+
+AFTER: ${JSON.stringify(validatedSpec, null, 2)}
+
+CLIENT FEEDBACK: "${feedback}"
+
+Provide a clear, professional explanation of what was changed and why, addressing the client's feedback.`;
+
+      const changesExplanation = await this.salesmanAgent.execute(changesPrompt);
+
+      // Optionally regenerate images for major changes
+      let newFloorplan, newRenders;
+      if (this.hasSignificantChanges(originalSpec, validatedSpec)) {
+        console.log('🔄 Significant changes detected, regenerating visuals...');
+        newFloorplan = await this.generateFloorplan(validatedSpec);
+        
+        const exteriorRender = await this.generate3DRender(newFloorplan, validatedSpec, 'exterior');
+        newRenders = [{ type: 'exterior', url: exteriorRender }];
+      }
+
+      return {
+        success: true,
+        updatedSpec: validatedSpec,
+        changesExplanation: changesExplanation || 'Design updated based on your feedback.',
+        newFloorplan,
+        newRenders,
+      };
+
+    } catch (error: any) {
+      console.error('Refinement error:', error);
+      return {
+        success: false,
+        updatedSpec: originalSpec, // Return original if refinement fails
+        changesExplanation: `Failed to process refinement: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * Determine if changes are significant enough to regenerate images
+   */
+  private hasSignificantChanges(original: ArchitecturalSpec, updated: ArchitecturalSpec): boolean {
+    // Check for major structural changes
+    const significantChanges = [
+      original.project.totalSquareFeet !== updated.project.totalSquareFeet,
+      original.project.stories !== updated.project.stories,
+      original.project.style !== updated.project.style,
+      original.rooms.length !== updated.rooms.length,
+      JSON.stringify(original.dimensions) !== JSON.stringify(updated.dimensions),
+      JSON.stringify(original.features.exterior) !== JSON.stringify(updated.features.exterior),
+    ];
+
+    return significantChanges.some(change => change);
+  }
+
+  /**
+   * Generate multiple design variations
+   */
+  async generateVariations(
+    spec: ArchitecturalSpec,
+    variationType: 'style' | 'layout' | 'size' = 'style',
+    count: number = 3
+  ): Promise<{
+    success: boolean;
+    variations: Array<{
+      spec: ArchitecturalSpec;
+      description: string;
+      floorplan?: string;
+      renders?: Array<{ type: string; url: string }>;
+    }>;
+  }> {
+    const variations = [];
+
+    try {
+      for (let i = 0; i < count; i++) {
+        const variationPrompt = `Create a design variation of this architectural specification:
+
+${JSON.stringify(spec, null, 2)}
+
+Variation Type: ${variationType}
+Variation #: ${i + 1}
+
+Generate a ${variationType} variation that maintains the same basic requirements but explores different approaches. Make meaningful changes while keeping the design practical and appealing.`;
+
+        const variationSpec = await this.visionParser.execute(variationPrompt, {
+          structuredOutput: true,
+        });
+
+        const validatedVariation = ArchitecturalSpecSchema.parse(
+          typeof variationSpec === 'string' ? JSON.parse(variationSpec) : variationSpec
+        );
+
+        const description = `${variationType.charAt(0).toUpperCase() + variationType.slice(1)} Variation ${i + 1}: ${this.describeVariation(spec, validatedVariation)}`;
+
+        variations.push({
+          spec: validatedVariation,
+          description,
+          // Could generate images for each variation if needed
+        });
+      }
+
+      return { success: true, variations };
+
+    } catch (error: any) {
+      console.error('Variations generation error:', error);
+      return { success: false, variations: [] };
+    }
+  }
+
+  /**
+   * Describe what makes a variation different
+   */
+  private describeVariation(original: ArchitecturalSpec, variation: ArchitecturalSpec): string {
+    const differences = [];
+    
+    if (original.project.style !== variation.project.style) {
+      differences.push(`${variation.project.style} style instead of ${original.project.style}`);
+    }
+    
+    if (original.features.exterior.siding !== variation.features.exterior.siding) {
+      differences.push(`${variation.features.exterior.siding} siding`);
+    }
+    
+    if (original.features.exterior.roofType !== variation.features.exterior.roofType) {
+      differences.push(`${variation.features.exterior.roofType} roof design`);
+    }
+    
+    return differences.length > 0 
+      ? differences.join(', ') 
+      : 'Alternative layout and design approach';
+  }
+
+  /**
+   * Internal Quality Review - Judge reviews work before client presentation
+   */
+  async internalQualityReview(
+    originalVision: string,
+    specification: ArchitecturalSpec,
+    floorplan?: string,
+    renders?: Array<{ type: string; url: string }>
+  ): Promise<{
+    approved: boolean;
+    score: number;
+    feedback: string;
+    improvements: string[];
+    criticalIssues: string[];
+  }> {
+    const reviewPrompt = `You are reviewing architectural work before client presentation.
+
+ORIGINAL CLIENT VISION:
+"${originalVision}"
+
+GENERATED SPECIFICATION:
+${JSON.stringify(specification, null, 2)}
+
+VISUAL DELIVERABLES:
+${floorplan ? `- Floor Plan: Generated` : '- Floor Plan: Missing'}
+${renders ? `- 3D Renders: ${renders.length} generated (${renders.map(r => r.type).join(', ')})` : '- 3D Renders: None'}
+
+As the Chief Architect, provide your professional review:
+
+1. **Accuracy**: Does the specification match the client's vision?
+2. **Completeness**: Are all client requirements addressed?
+3. **Quality**: Is this professional-grade work?
+4. **Buildability**: Is this design structurally sound and practical?
+5. **Style Consistency**: Does the style choice align with client preferences?
+
+Rate the work (1-10) and provide:
+- Specific feedback for improvements
+- Critical issues that must be fixed
+- Approval status (approve for client or send back for revision)
+
+Be thorough and constructive - our reputation depends on quality.`;
+
+    const review = await this.qualityJudge.execute(reviewPrompt);
+    
+    // Parse the review to extract structured feedback
+    const score = this.extractScore(review);
+    const approved = score >= 7; // Minimum threshold for client presentation
+    const improvements = this.extractImprovements(review);
+    const criticalIssues = this.extractCriticalIssues(review);
+
+    return {
+      approved,
+      score,
+      feedback: review || 'Quality review completed.',
+      improvements,
+      criticalIssues,
+    };
+  }
+
+  /**
+   * Iterative Internal Improvement Process
+   */
+  async iterativeQualityImprovement(
+    originalVision: string,
+    maxIterations: number = 3
+  ): Promise<{
+    finalSpec: ArchitecturalSpec;
+    floorplan: string;
+    renders: Array<{ type: string; url: string }>;
+    iterationsCount: number;
+    qualityScore: number;
+    reviewHistory: Array<{ iteration: number; score: number; feedback: string }>;
+  }> {
+    let currentSpec: ArchitecturalSpec;
+    let currentFloorplan: string = '';
+    let currentRenders: Array<{ type: string; url: string }> = [];
+    let iteration = 0;
+    const reviewHistory = [];
+
+    console.log('🔄 Starting iterative quality improvement process...');
+
+    while (iteration < maxIterations) {
+      iteration++;
+      console.log(`\n🏗️ Iteration ${iteration}/${maxIterations}`);
+
+      try {
+        // Step 1: Generate/regenerate specification
+        if (iteration === 1) {
+          console.log('📋 Generating initial specification...');
+          currentSpec = await this.parseVision(originalVision);
+        } else {
+          // Use feedback from previous review to improve
+          const lastReview = reviewHistory[reviewHistory.length - 1];
+          console.log('🔧 Improving specification based on feedback...');
+          
+          const improvementPrompt = `The previous design received this feedback:
+
+${lastReview.feedback}
+
+CURRENT SPECIFICATION:
+${JSON.stringify(currentSpec, null, 2)}
+
+ORIGINAL CLIENT VISION:
+"${originalVision}"
+
+Improve the specification to address the feedback while staying true to the client's vision.`;
+
+          const improvedSpecRaw = await this.visionParser.execute(improvementPrompt, {
+            structuredOutput: true,
+          });
+          
+          currentSpec = ArchitecturalSpecSchema.parse(
+            typeof improvedSpecRaw === 'string' ? JSON.parse(improvedSpecRaw) : improvedSpecRaw
+          );
+        }
+
+        // Step 2: Generate visuals
+        console.log('🎨 Generating floorplan and renders...');
+        currentFloorplan = await this.generateFloorplan(currentSpec);
+        
+        const exteriorRender = await this.generate3DRender(currentFloorplan, currentSpec, 'exterior');
+        const interiorRender = await this.generate3DRender(currentFloorplan, currentSpec, 'interior');
+        currentRenders = [
+          { type: 'exterior', url: exteriorRender },
+          { type: 'interior', url: interiorRender },
+        ];
+
+        // Step 3: Internal quality review
+        console.log('👨‍💼 Quality review in progress...');
+        const review = await this.internalQualityReview(
+          originalVision,
+          currentSpec,
+          currentFloorplan,
+          currentRenders
+        );
+
+        reviewHistory.push({
+          iteration,
+          score: review.score,
+          feedback: review.feedback,
+        });
+
+        console.log(`📊 Quality Score: ${review.score}/10`);
+        
+        if (review.approved) {
+          console.log('✅ Design approved for client presentation!');
+          break;
+        } else {
+          console.log('❌ Needs improvement, continuing to next iteration...');
+          if (review.criticalIssues.length > 0) {
+            console.log('🚨 Critical issues:', review.criticalIssues);
+          }
+        }
+
+      } catch (error) {
+        console.error(`❌ Error in iteration ${iteration}:`, error);
+        // Continue with previous iteration's results if available
+        break;
+      }
+    }
+
+    const finalScore = reviewHistory[reviewHistory.length - 1]?.score || 0;
+    
+    return {
+      finalSpec: currentSpec!,
+      floorplan: currentFloorplan,
+      renders: currentRenders,
+      iterationsCount: iteration,
+      qualityScore: finalScore,
+      reviewHistory,
+    };
+  }
+
+  /**
+   * Generate 3 custom home design variations with quality control
+   */
+  async generateThreeCustomDesigns(
+    originalVision: string
+  ): Promise<{
+    designs: Array<{
+      name: string;
+      specification: ArchitecturalSpec;
+      floorplan: string;
+      renders: Array<{ type: string; url: string }>;
+      qualityScore: number;
+      description: string;
+    }>;
+    totalTime: string;
+  }> {
+    console.log('🏡 Generating 3 custom home designs with quality control...');
+    const startTime = Date.now();
+    
+    const designPromises = [
+      this.generateSingleQualityDesign(originalVision, 'Option A', 'primary interpretation'),
+      this.generateSingleQualityDesign(originalVision, 'Option B', 'alternative style approach'),
+      this.generateSingleQualityDesign(originalVision, 'Option C', 'premium upgraded version'),
+    ];
+
+    const designs = await Promise.all(designPromises);
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    
+    console.log(`✅ Generated 3 quality-controlled designs in ${duration}s`);
+    
+    return {
+      designs,
+      totalTime: duration,
+    };
+  }
+
+  /**
+   * Generate a single quality-controlled design
+   */
+  private async generateSingleQualityDesign(
+    vision: string,
+    name: string,
+    variation: string
+  ): Promise<{
+    name: string;
+    specification: ArchitecturalSpec;
+    floorplan: string;
+    renders: Array<{ type: string; url: string }>;
+    qualityScore: number;
+    description: string;
+  }> {
+    console.log(`🎯 Generating ${name} (${variation})...`);
+    
+    const modifiedVision = `${vision} (${variation} - create a ${variation} of this vision)`;
+    
+    const result = await this.iterativeQualityImprovement(modifiedVision, 2); // 2 iterations max per design
+    
+    const description = this.generateDesignDescription(result.finalSpec, variation);
+    
+    return {
+      name,
+      specification: result.finalSpec,
+      floorplan: result.floorplan,
+      renders: result.renders,
+      qualityScore: result.qualityScore,
+      description,
+    };
+  }
+
+  /**
+   * Helper methods for parsing review feedback
+   */
+  private extractScore(review: string): number {
+    const scoreMatch = review.match(/(?:score|rating|rate).*?(\d+)(?:\/10|\s*out\s*of\s*10)/i);
+    if (scoreMatch) return parseInt(scoreMatch[1]);
+    
+    // Fallback: look for standalone numbers
+    const numberMatch = review.match(/(\d+)\/10/);
+    if (numberMatch) return parseInt(numberMatch[1]);
+    
+    return 5; // Default middle score if can't parse
+  }
+
+  private extractImprovements(review: string): string[] {
+    const improvements = [];
+    const lines = review.split('\n');
+    
+    for (const line of lines) {
+      if (line.toLowerCase().includes('improve') || 
+          line.toLowerCase().includes('enhance') ||
+          line.toLowerCase().includes('consider') ||
+          line.toLowerCase().includes('suggestion')) {
+        improvements.push(line.trim());
+      }
+    }
+    
+    return improvements.slice(0, 5); // Limit to 5 improvements
+  }
+
+  private extractCriticalIssues(review: string): string[] {
+    const issues = [];
+    const lines = review.split('\n');
+    
+    for (const line of lines) {
+      if (line.toLowerCase().includes('critical') || 
+          line.toLowerCase().includes('must fix') ||
+          line.toLowerCase().includes('major issue') ||
+          line.toLowerCase().includes('problem')) {
+        issues.push(line.trim());
+      }
+    }
+    
+    return issues;
+  }
+
+  private generateDesignDescription(spec: ArchitecturalSpec, variation: string): string {
+    const style = spec.project.style;
+    const sqft = spec.project.totalSquareFeet;
+    const stories = spec.project.stories;
+    const bedrooms = spec.rooms.filter(r => r.type === 'bedroom' || r.type === 'master_bedroom').length;
+    const bathrooms = spec.rooms.filter(r => r.type === 'bathroom').length;
+    
+    return `${style} ${stories}-story home with ${sqft} sq ft featuring ${bedrooms} bedrooms and ${bathrooms} bathrooms. This ${variation} emphasizes ${style.toLowerCase()} architectural elements with modern functionality.`;
   }
 
   /**

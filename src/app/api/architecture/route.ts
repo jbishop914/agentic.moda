@@ -1,114 +1,187 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { replicateImageTool } from '@/lib/tools/image-tools';
+import { ArchitectureDesignSystem } from '@/lib/agents/architecture-agent';
 
 export async function POST(request: NextRequest) {
-  console.log('Architecture API called');
+  console.log('🏗️ Architecture API called - Enhanced Pipeline');
   
   // Check if API keys are available
-  const replicateKey = process.env.REPLICATE_API_KEY || process.env.NEXT_PUBLIC_REPLICATE_API_KEY;
-  console.log('Replicate key exists:', !!replicateKey);
-  console.log('Replicate key starts with:', replicateKey?.substring(0, 5));
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const replicateKey = process.env.REPLICATE_API_TOKEN || process.env.NEXT_PUBLIC_REPLICATE_API_TOKEN;
   
-  if (!replicateKey) {
-    console.error('No Replicate API key found!');
+  if (!openaiKey || !replicateKey) {
+    console.error('Missing required API keys:', { openai: !!openaiKey, replicate: !!replicateKey });
     return NextResponse.json(
-      { error: true, message: 'Replicate API key not configured on server' },
+      { error: true, message: 'Required API keys not configured' },
       { status: 500 }
     );
   }
   
   try {
     const body = await request.json();
-    const { vision } = body;
+    const { vision, mode = 'full', options = {} } = body;
 
     if (!vision) {
       return NextResponse.json(
-        { error: true, message: 'Architecture vision is required' },
+        { error: true, message: 'Architecture vision description is required' },
         { status: 400 }
       );
     }
 
-    console.log('🏗️ Starting architecture pipeline for:', vision);
+    console.log('🎯 Processing vision:', vision.substring(0, 100) + '...');
+    console.log('🔧 Mode:', mode, 'Options:', options);
 
-    // Step 1: Parse vision to JSON specification
-    const spec = {
-      project: {
-        name: 'Modern Home Design',
-        type: 'residential',
-        style: extractStyle(vision),
-        totalSquareFeet: extractSquareFeet(vision),
-        stories: extractStories(vision)
-      },
-      rooms: extractRooms(vision)
-    };
+    // Initialize the enhanced architecture design system
+    const designSystem = new ArchitectureDesignSystem(openaiKey, replicateKey);
 
-    console.log('📊 Generated specification:', spec);
+    let result;
 
-    // Step 2: Generate images in parallel using the best models
-    const imagePromises = [
-      // Floorplan - Use flux-pro for technical accuracy
-      generateImage(
-        `architectural floorplan, technical drawing, ${vision}, top view blueprint, room labels, measurements, professional architectural plan, black and white technical drawing`,
-        'flux-pro',
-        '1:1'
-      ),
-      
-      // Exterior View - Use flux-realism for photorealistic rendering
-      generateImage(
-        `modern house exterior based on: ${vision}, architectural photography, golden hour lighting, professional real estate photo, ultra realistic, high quality`,
-        'flux-realism',
-        '16:9'
-      ),
-      
-      // Interior View - Use flux-realism
-      generateImage(
-        `modern interior design based on: ${vision}, professional interior photography, natural lighting, magazine quality, stylish furniture, high end finishes`,
-        'flux-realism',
-        '16:9'
-      ),
-      
-      // Aerial View - Use flux-pro for accuracy
-      generateImage(
-        `aerial view of modern house: ${vision}, drone photography, landscape context, neighborhood view, bird's eye perspective`,
-        'flux-pro',
-        '16:9'
-      )
-    ];
+    switch (mode) {
+      case 'consultation':
+        // Salesman mode - analyze vision and suggest what's needed
+        result = await designSystem.consultationMode(vision);
+        break;
 
-    console.log('🎨 Generating 4 images in parallel...');
-    const startTime = Date.now();
-    
-    const imageResults = await Promise.all(imagePromises);
-    
-    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log(`✅ Generated all images in ${duration}s`);
+      case 'specification':
+        // Just generate the JSON specification
+        result = {
+          success: true,
+          specification: await designSystem.parseVision(vision),
+          mode: 'specification'
+        };
+        break;
 
-    // Extract URLs from results
-    const images = {
-      floorplan: imageResults[0].success ? imageResults[0].images[0] : null,
-      exterior: imageResults[1].success ? imageResults[1].images[0] : null,
-      interior: imageResults[2].success ? imageResults[2].images[0] : null,
-      aerial: imageResults[3].success ? imageResults[3].images[0] : null,
-    };
+      case 'floorplan':
+        // Generate specification + floorplan
+        const spec = await designSystem.parseVision(vision);
+        const floorplan = await designSystem.generateFloorplan(spec);
+        result = {
+          success: true,
+          specification: spec,
+          floorplan,
+          mode: 'floorplan'
+        };
+        break;
 
-    // Check if any images failed
-    const failures = imageResults.filter(r => !r.success);
-    if (failures.length > 0) {
-      console.error('❌ Some images failed:', failures);
+      case 'three-designs':
+        // Generate 3 polished custom designs with internal quality control
+        console.log('🏡 Generating 3 quality-controlled custom designs...');
+        result = await designSystem.generateThreeCustomDesigns(vision);
+        result.mode = 'three-designs';
+        break;
+
+      case 'quality-controlled':
+        // Single design with iterative quality improvement
+        console.log('🔄 Generating quality-controlled design...');
+        const qualityResult = await designSystem.iterativeQualityImprovement(vision);
+        result = {
+          success: true,
+          specification: qualityResult.finalSpec,
+          floorplan: qualityResult.floorplan,
+          renders: qualityResult.renders,
+          qualityScore: qualityResult.qualityScore,
+          iterations: qualityResult.iterationsCount,
+          reviewHistory: qualityResult.reviewHistory,
+          mode: 'quality-controlled'
+        };
+        break;
+
+      case 'full':
+      default:
+        // Complete pipeline: Vision → JSON → Floorplan → 3D Renders
+        console.log('🚀 Executing full architecture pipeline...');
+        const startTime = Date.now();
+        
+        result = await designSystem.executeFullPipeline(vision, {
+          generateMultipleViews: options.multipleViews !== false,
+          includeInterior: options.includeInterior !== false,
+        });
+        
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        result.generationTime = duration;
+        result.mode = 'full';
+        
+        console.log(`✅ Full pipeline completed in ${duration}s`);
+        break;
     }
 
-    return NextResponse.json({
-      success: true,
-      specification: spec,
-      images,
-      generationTime: duration,
-      message: `Generated ${4 - failures.length} of 4 images successfully`
-    });
+    return NextResponse.json(result);
     
   } catch (error: any) {
-    console.error('Architecture pipeline error:', error);
+    console.error('❌ Architecture pipeline error:', error);
     return NextResponse.json(
-      { error: true, message: error.message || 'Failed to generate architecture design' },
+      { 
+        success: false,
+        error: true, 
+        message: error.message || 'Failed to generate architecture design',
+        details: error.stack?.split('\n').slice(0, 3).join('\n')
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// Refinement endpoint for iterative design improvements
+export async function PUT(request: NextRequest) {
+  console.log('🔄 Architecture refinement called');
+  
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const replicateKey = process.env.REPLICATE_API_TOKEN || process.env.NEXT_PUBLIC_REPLICATE_API_TOKEN;
+  
+  if (!openaiKey || !replicateKey) {
+    return NextResponse.json(
+      { error: true, message: 'Required API keys not configured' },
+      { status: 500 }
+    );
+  }
+
+  try {
+    const body = await request.json();
+    const { originalSpec, feedback, action = 'refine', options = {} } = body;
+
+    if (!originalSpec || !feedback) {
+      return NextResponse.json(
+        { error: true, message: 'Original specification and feedback are required' },
+        { status: 400 }
+      );
+    }
+
+    const designSystem = new ArchitectureDesignSystem(openaiKey, replicateKey);
+
+    let result;
+
+    switch (action) {
+      case 'refine':
+        console.log('🎯 Refining design based on feedback...');
+        result = await designSystem.refineDesign(originalSpec, feedback);
+        break;
+
+      case 'variations':
+        console.log('🎨 Generating design variations...');
+        result = await designSystem.generateVariations(
+          originalSpec, 
+          options.variationType || 'style',
+          options.count || 3
+        );
+        break;
+
+      default:
+        return NextResponse.json(
+          { error: true, message: 'Invalid action. Use "refine" or "variations"' },
+          { status: 400 }
+        );
+    }
+
+    return NextResponse.json(result);
+
+  } catch (error: any) {
+    console.error('❌ Architecture refinement error:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: true, 
+        message: error.message || 'Failed to refine architecture design',
+        details: error.stack?.split('\n').slice(0, 3).join('\n')
+      },
       { status: 500 }
     );
   }

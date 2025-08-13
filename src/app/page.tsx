@@ -499,6 +499,8 @@ export default function Home() {
                         window.location.href = '/map';
                       } else if (view === 'creative') {
                         window.location.href = '/creative';
+                      } else if (view === 'architecture') {
+                        window.location.href = '/architecture';
                       } else {
                         setActiveView(view);
                         setActiveSubView(view === 'orchestrate' ? 'playground' : '');
