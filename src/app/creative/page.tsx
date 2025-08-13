@@ -25,17 +25,32 @@ export default function CreativePage() {
   const [error, setError] = useState('');
 
   const models = {
-    'flux-pro': { name: 'Flux Pro', description: 'Best quality, most capable', emoji: '⚡' },
+    // Black Forest Labs Flux Models
+    'flux-pro': { name: 'Flux Pro 1.1', description: 'Highest quality, best details', emoji: '⚡' },
     'flux-dev': { name: 'Flux Dev', description: 'Good balance of speed and quality', emoji: '🚀' },
-    'flux-schnell': { name: 'Flux Schnell', description: 'Ultra-fast (4 steps)', emoji: '⚡' },
+    'flux-schnell': { name: 'Flux Schnell', description: 'Ultra-fast (4 steps)', emoji: '💨' },
     'flux-realism': { name: 'Flux Realism', description: 'Photorealistic results', emoji: '📸' },
+    
+    // Premium Models
     'ideogram-v3-turbo': { name: 'Ideogram V3 Turbo', description: 'Excellent text rendering', emoji: '✍️' },
     'seedream-3': { name: 'SeedDream 3', description: 'Artistic and creative', emoji: '🎨' },
     'imagen-4': { name: 'Imagen 4', description: 'Google\'s latest model', emoji: '🔍' },
     'playground-v3': { name: 'Playground V3', description: 'Great for concepts', emoji: '🎮' },
-    'sdxl': { name: 'Stable Diffusion XL', description: 'Classic and reliable', emoji: '🖼️' },
-    'photorealistic': { name: 'Photorealistic', description: 'Ultra-realistic photos', emoji: '📷' },
-    'anime': { name: 'Anime', description: 'Anime and manga style', emoji: '🎌' },
+    
+    // Stable Diffusion Family
+    'stable-diffusion': { name: 'Stable Diffusion 2.1', description: 'Original SD model', emoji: '🎯' },
+    'sdxl': { name: 'Stable Diffusion XL', description: 'Enhanced quality', emoji: '🖼️' },
+    
+    // Specialized Models
+    'kandinsky': { name: 'Kandinsky 2.2', description: 'Russian AI model', emoji: '🏛️' },
+    'openjourney': { name: 'OpenJourney', description: 'Midjourney-style', emoji: '🗺️' },
+    'realistic-vision': { name: 'Realistic Vision', description: 'Photorealism focus', emoji: '👁️' },
+    'anime': { name: 'Waifu Diffusion', description: 'Anime and manga style', emoji: '🎌' },
+    'photorealistic': { name: 'Photorealistic FX', description: 'Ultra-realistic photos', emoji: '📷' },
+    
+    // Future Models (placeholders)
+    'dalle-3': { name: 'DALL-E 3', description: 'OpenAI model (coming soon)', emoji: '🤖' },
+    'midjourney-v6': { name: 'Midjourney V6', description: 'MJ style (coming soon)', emoji: '🌌' },
   };
 
   const aspectRatios = [
@@ -211,31 +226,117 @@ export default function CreativePage() {
                   />
                 </div>
 
-                {/* Model Selection */}
+                {/* Model Selection - Organized by Category */}
                 <div className="mb-6">
-                  <label className="text-xs uppercase tracking-wider text-gray-400 mb-2 block">
-                    Model
+                  <label className="text-xs uppercase tracking-wider text-gray-400 mb-3 block">
+                    Model Selection
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(models).map(([key, model]) => (
-                      <button
-                        key={key}
-                        onClick={() => setSelectedModel(key)}
-                        className={`p-3 rounded-lg border text-left transition-all ${
-                          selectedModel === key
-                            ? 'bg-slate-800 border-slate-600'
-                            : 'bg-[#0f1214] border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{model.emoji}</span>
-                          <div>
-                            <div className="text-sm font-medium">{model.name}</div>
-                            <div className="text-xs text-gray-500">{model.description}</div>
+                  
+                  {/* Flux Models Section */}
+                  <div className="mb-4">
+                    <h4 className="text-xs text-slate-500 mb-2">🔥 Black Forest Labs Flux</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.entries(models).filter(([key]) => key.startsWith('flux')).map(([key, model]) => (
+                        <button
+                          key={key}
+                          onClick={() => setSelectedModel(key)}
+                          className={`p-2.5 rounded-lg border text-left transition-all ${
+                            selectedModel === key
+                              ? 'bg-slate-800 border-slate-600'
+                              : 'bg-[#0f1214] border-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">{model.emoji}</span>
+                            <div>
+                              <div className="text-xs font-medium">{model.name}</div>
+                              <div className="text-[10px] text-gray-500">{model.description}</div>
+                            </div>
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Premium Models Section */}
+                  <div className="mb-4">
+                    <h4 className="text-xs text-slate-500 mb-2">✨ Premium Models</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.entries(models).filter(([key]) => 
+                        ['ideogram-v3-turbo', 'seedream-3', 'imagen-4', 'playground-v3'].includes(key)
+                      ).map(([key, model]) => (
+                        <button
+                          key={key}
+                          onClick={() => setSelectedModel(key)}
+                          className={`p-2.5 rounded-lg border text-left transition-all ${
+                            selectedModel === key
+                              ? 'bg-slate-800 border-slate-600'
+                              : 'bg-[#0f1214] border-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">{model.emoji}</span>
+                            <div>
+                              <div className="text-xs font-medium">{model.name}</div>
+                              <div className="text-[10px] text-gray-500">{model.description}</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Stable Diffusion & Specialized Models */}
+                  <div className="mb-4">
+                    <h4 className="text-xs text-slate-500 mb-2">🎨 Specialized Models</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.entries(models).filter(([key]) => 
+                        !key.startsWith('flux') && 
+                        !['ideogram-v3-turbo', 'seedream-3', 'imagen-4', 'playground-v3', 'dalle-3', 'midjourney-v6'].includes(key)
+                      ).map(([key, model]) => (
+                        <button
+                          key={key}
+                          onClick={() => setSelectedModel(key)}
+                          className={`p-2.5 rounded-lg border text-left transition-all ${
+                            selectedModel === key
+                              ? 'bg-slate-800 border-slate-600'
+                              : 'bg-[#0f1214] border-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">{model.emoji}</span>
+                            <div>
+                              <div className="text-xs font-medium">{model.name}</div>
+                              <div className="text-[10px] text-gray-500">{model.description}</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Coming Soon Models */}
+                  <div>
+                    <h4 className="text-xs text-slate-500 mb-2">🔜 Coming Soon</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.entries(models).filter(([key]) => 
+                        ['dalle-3', 'midjourney-v6'].includes(key)
+                      ).map(([key, model]) => (
+                        <button
+                          key={key}
+                          disabled
+                          className="p-2.5 rounded-lg border text-left bg-[#0f1214]/50 border-slate-900 opacity-50 cursor-not-allowed"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-base grayscale">{model.emoji}</span>
+                            <div>
+                              <div className="text-xs font-medium">{model.name}</div>
+                              <div className="text-[10px] text-gray-600">{model.description}</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
