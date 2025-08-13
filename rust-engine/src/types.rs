@@ -26,6 +26,8 @@ pub enum DocumentType {
     Email,
     PlainText,
     Image,
+    Html,
+    Xml,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

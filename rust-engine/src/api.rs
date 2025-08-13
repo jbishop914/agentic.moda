@@ -4,6 +4,7 @@
 use crate::types::*;
 use crate::AppState;
 use crate::sec_filing_client::{SecFilingClient, ProcessingResult};
+use crate::email_processor::{EmailProcessor, EmailBatchResult};
 use axum::{
     extract::{Multipart, State},
     http::StatusCode,
@@ -322,6 +323,43 @@ pub async fn create_sec_demo_dataset(State(app_state): State<AppState>) -> impl 
     }
 }
 
+/// Create Email Demo Dataset - LIGHTNING FAST ⚡
+pub async fn create_email_demo_dataset(State(app_state): State<AppState>) -> impl IntoResponse {
+    let start_time = std::time::Instant::now();
+    info!("⚡ FAST email demo dataset creation requested");
+
+    // Process the demo email dataset
+    match app_state.email_processor.create_demo_email_dataset().await {
+        Ok(result) => {
+            let total_time = start_time.elapsed();
+            
+            info!("⚡ BLAZING FAST email dataset created: {} emails, {} threads in {:.1}s", 
+                result.total_emails, 
+                result.total_threads,
+                total_time.as_secs_f32()
+            );
+
+            let response = EmailDemoResponse {
+                success: result.success,
+                message: format!("⚡ LIGHTNING FAST: {} emails processed in {}ms (Legal discovery ready!)", 
+                    result.total_emails, result.processing_time_ms),
+                total_emails: result.total_emails,
+                total_attachments: result.total_attachments,
+                total_threads: result.total_threads,
+                processing_time_ms: result.processing_time_ms,
+                total_size_bytes: result.total_size_bytes,
+                sample_threads: result.threads.into_iter().take(3).collect(), // Show first 3 threads as sample
+            };
+
+            (StatusCode::OK, Json(response)).into_response()
+        }
+        Err(e) => {
+            error!("Email demo dataset creation failed: {}", e);
+            create_error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("Failed to create email demo dataset: {}", e))
+        }
+    }
+}
+
 /// Helper function to create error responses
 fn create_error_response(status: StatusCode, message: &str) -> axum::response::Response {
     let error_response = ErrorResponse {
@@ -410,4 +448,16 @@ pub struct SecProcessingResult {
     pub status: ProcessingStatus,
     pub entities_found: usize,
     pub error_message: Option<String>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct EmailDemoResponse {
+    pub success: bool,
+    pub message: String,
+    pub total_emails: usize,
+    pub total_attachments: usize,
+    pub total_threads: usize,
+    pub processing_time_ms: u64,
+    pub total_size_bytes: u64,
+    pub sample_threads: Vec<crate::email_processor::EmailThread>,
 }

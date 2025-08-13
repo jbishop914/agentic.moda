@@ -16,6 +16,8 @@ export default function DataworkshopPage() {
   const [uploadSpeed, setUploadSpeed] = useState<number>(0)
   const [isCreatingDemo, setIsCreatingDemo] = useState(false)
   const [demoResults, setDemoResults] = useState<any>(null)
+  const [isCreatingEmailDemo, setIsCreatingEmailDemo] = useState(false)
+  const [emailDemoResults, setEmailDemoResults] = useState<any>(null)
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const startTime = performance.now()
@@ -81,6 +83,33 @@ export default function DataworkshopPage() {
     }
   }
 
+  const createEmailDemo = async () => {
+    setIsCreatingEmailDemo(true)
+    setEmailDemoResults(null)
+    
+    try {
+      const startTime = performance.now()
+      const response = await fetch('http://127.0.0.1:8080/api/email-demo', {
+        method: 'POST',
+      })
+      
+      const result = await response.json()
+      const totalTime = performance.now() - startTime
+      
+      setEmailDemoResults(result)
+      console.log(`⚡ Email demo dataset created in ${totalTime.toFixed(1)}ms`)
+      
+    } catch (error) {
+      console.error('Failed to create email demo dataset:', error)
+      setEmailDemoResults({
+        success: false,
+        message: 'Failed to create email demo dataset'
+      })
+    } finally {
+      setIsCreatingEmailDemo(false)
+    }
+  }
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
@@ -91,6 +120,7 @@ export default function DataworkshopPage() {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'text/plain': ['.txt'],
       'message/rfc822': ['.eml'],
+      'application/vnd.ms-outlook': ['.msg'],
     }
   })
 
@@ -166,7 +196,53 @@ export default function DataworkshopPage() {
           </button>
           
           <p className="text-gray-400 text-sm mt-2">
-            Downloads & processes Apple, Tesla, Microsoft, NVIDIA + more SEC filings ⚡
+            Downloads & processes Apple, Tesla, Microsoft, NVIDIA + more SEC filings ⚡<br/>
+            <span className="text-purple-300">18M+ filings • 100M+ exhibits • 50 req/sec • 15K files/5min</span>
+          </p>
+        </motion.div>
+
+        {/* Email Demo Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.17 }}
+          className="text-center mb-8"
+        >
+          <button
+            onClick={createEmailDemo}
+            disabled={isCreatingEmailDemo}
+            className={`
+              inline-flex items-center space-x-2 px-8 py-4 rounded-lg font-bold text-lg
+              transition-all duration-200 transform
+              ${isCreatingEmailDemo 
+                ? 'bg-blue-600/50 text-blue-300 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white hover:scale-105 shadow-lg hover:shadow-blue-500/25'
+              }
+            `}
+          >
+            {isCreatingEmailDemo ? (
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="text-2xl"
+                >
+                  ⚡
+                </motion.div>
+                <span>Processing Email Demo...</span>
+              </>
+            ) : (
+              <>
+                <span className="text-2xl">📧</span>
+                <span>Create Email Discovery Demo</span>
+                <span className="text-sm bg-orange-400 text-black px-2 py-1 rounded">LEGAL</span>
+              </>
+            )}
+          </button>
+          
+          <p className="text-gray-400 text-sm mt-2">
+            Legal discovery: Acquisitions, contracts, executive comms ⚡<br/>
+            <span className="text-cyan-300">1000+ emails/sec • Thread analysis • Attachment processing</span>
           </p>
         </motion.div>
 
@@ -266,6 +342,85 @@ export default function DataworkshopPage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Email Demo Results */}
+        <AnimatePresence>
+          {emailDemoResults && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8"
+            >
+              <div className={`
+                p-6 rounded-lg border
+                ${emailDemoResults.success ? 'bg-blue-900/20 border-blue-400' : 'bg-red-900/20 border-red-400'}
+              `}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-white flex items-center space-x-2">
+                    <span>{emailDemoResults.success ? '📧' : '❌'}</span>
+                    <span>Email Discovery Demo Results</span>
+                  </h3>
+                  {emailDemoResults.success && (
+                    <div className="text-blue-400 font-bold">
+                      ⚡ {emailDemoResults.processing_time_ms}ms TOTAL
+                    </div>
+                  )}
+                </div>
+                
+                <p className={`mb-4 ${emailDemoResults.success ? 'text-blue-300' : 'text-red-300'}`}>
+                  {emailDemoResults.message}
+                </p>
+                
+                {emailDemoResults.success && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-4 gap-4 mb-4">
+                      <div className="bg-gray-800/50 p-3 rounded text-center">
+                        <div className="text-2xl font-bold text-blue-400">{emailDemoResults.total_emails}</div>
+                        <div className="text-xs text-gray-400">Emails Processed</div>
+                      </div>
+                      <div className="bg-gray-800/50 p-3 rounded text-center">
+                        <div className="text-2xl font-bold text-cyan-400">{emailDemoResults.total_threads}</div>
+                        <div className="text-xs text-gray-400">Conversation Threads</div>
+                      </div>
+                      <div className="bg-gray-800/50 p-3 rounded text-center">
+                        <div className="text-2xl font-bold text-orange-400">{emailDemoResults.total_attachments}</div>
+                        <div className="text-xs text-gray-400">Attachments Found</div>
+                      </div>
+                      <div className="bg-gray-800/50 p-3 rounded text-center">
+                        <div className="text-2xl font-bold text-green-400">{Math.round(emailDemoResults.total_size_bytes/1024)}KB</div>
+                        <div className="text-xs text-gray-400">Total Data Size</div>
+                      </div>
+                    </div>
+                    
+                    {emailDemoResults.sample_threads && emailDemoResults.sample_threads.length > 0 && (
+                      <div>
+                        <h4 className="text-lg font-bold text-white mb-3">📧 Sample Email Threads:</h4>
+                        <div className="grid gap-3">
+                          {emailDemoResults.sample_threads.map((thread: any, index: number) => (
+                            <div key={index} className="bg-gray-800/50 p-4 rounded">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-white font-medium">{thread.subject}</span>
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">{thread.message_count} msgs</span>
+                                  <span className="text-xs bg-cyan-600 text-white px-2 py-1 rounded">{thread.participant_count} people</span>
+                                </div>
+                              </div>
+                              <div className="text-sm text-gray-400">
+                                Latest: {thread.emails && thread.emails.length > 0 ? 
+                                  thread.emails[thread.emails.length - 1]?.sender || 'Unknown' : 'No emails'
+                                }
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

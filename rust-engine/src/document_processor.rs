@@ -10,6 +10,7 @@ use uuid::Uuid;
 use tracing::{info, warn, error};
 use regex::Regex;
 use std::collections::HashMap;
+use scraper::{Html, Selector};
 
 pub struct DocumentProcessor {
     // OCR engine for scanned PDFs
@@ -66,6 +67,8 @@ impl DocumentProcessor {
             DocumentType::Email => self.process_email(file_path).await?,
             DocumentType::PlainText => self.process_text(file_path).await?,
             DocumentType::Image => self.process_image_ocr(file_path).await?,
+            DocumentType::Html => self.process_html(file_path).await?,
+            DocumentType::Xml => self.process_xml(file_path).await?,
         };
 
         // Extract metadata
@@ -248,6 +251,84 @@ impl DocumentProcessor {
         })
     }
 
+    /// Process HTML files (SEC filings are often in HTML format) - LIGHTNING FAST ⚡
+    async fn process_html(&self, file_path: &str) -> Result<ExtractedContent, ProcessingError> {
+        info!("⚡ FAST processing HTML: {}", file_path);
+        
+        let html_content = fs::read_to_string(file_path)
+            .map_err(|e| ProcessingError::IoError(e.to_string()))?;
+
+        // Parse HTML and extract clean text
+        let document = Html::parse_document(&html_content);
+        let text_selector = Selector::parse("body").unwrap_or_else(|_| {
+            Selector::parse("*").unwrap() // Fallback to all elements
+        });
+        
+        let raw_text = document.select(&text_selector)
+            .map(|element| element.text().collect::<Vec<_>>().join(" "))
+            .collect::<Vec<_>>()
+            .join("\n");
+        
+        // If we got no text, fall back to stripping HTML tags
+        let raw_text = if raw_text.trim().is_empty() {
+            regex::Regex::new(r"<[^>]*>").unwrap()
+                .replace_all(&html_content, " ")
+                .to_string()
+        } else {
+            raw_text
+        };
+
+        // Clean up whitespace
+        let cleaned_text = regex::Regex::new(r"\s+").unwrap()
+            .replace_all(&raw_text, " ")
+            .trim()
+            .to_string();
+
+        info!("✅ HTML processed: {} characters extracted", cleaned_text.len());
+
+        Ok(ExtractedContent {
+            raw_text: cleaned_text,
+            structured_data: None,
+            images: Vec::new(),
+            attachments: Vec::new(),
+        })
+    }
+
+    /// Process XML files (XBRL and other SEC formats) - BLAZING FAST ⚡
+    async fn process_xml(&self, file_path: &str) -> Result<ExtractedContent, ProcessingError> {
+        info!("⚡ FAST processing XML: {}", file_path);
+        
+        let xml_content = fs::read_to_string(file_path)
+            .map_err(|e| ProcessingError::IoError(e.to_string()))?;
+
+        // Extract text content from XML by removing tags
+        let raw_text = regex::Regex::new(r"<[^>]*>").unwrap()
+            .replace_all(&xml_content, " ")
+            .to_string();
+
+        // Clean up whitespace and common XML entities
+        let cleaned_text = raw_text
+            .replace("&nbsp;", " ")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"");
+
+        let final_text = regex::Regex::new(r"\s+").unwrap()
+            .replace_all(&cleaned_text, " ")
+            .trim()
+            .to_string();
+
+        info!("✅ XML processed: {} characters extracted", final_text.len());
+
+        Ok(ExtractedContent {
+            raw_text: final_text,
+            structured_data: None,
+            images: Vec::new(),
+            attachments: Vec::new(),
+        })
+    }
+
     /// Determine document type from file extension
     fn determine_document_type(&self, file_path: &str) -> Result<DocumentType, ProcessingError> {
         let path = Path::new(file_path);
@@ -263,6 +344,8 @@ impl DocumentProcessor {
             "eml" | "msg" => Ok(DocumentType::Email),
             "txt" | "md" => Ok(DocumentType::PlainText),
             "png" | "jpg" | "jpeg" | "tiff" | "bmp" => Ok(DocumentType::Image),
+            "html" | "htm" => Ok(DocumentType::Html),
+            "xml" => Ok(DocumentType::Xml),
             _ => Err(ProcessingError::UnsupportedFileType(extension)),
         }
     }

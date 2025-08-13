@@ -10,7 +10,8 @@ use uuid::Uuid;
 pub struct SecFilingClient {
     client: Client,
     api_key: String,
-    base_url: String,
+    pdf_generator_url: String,
+    download_api_url: String,
 }
 
 #[derive(Debug, Clone)]
@@ -27,7 +28,8 @@ impl SecFilingClient {
         Self {
             client: Client::new(),
             api_key,
-            base_url: "https://api.sec-api.io/filing-reader".to_string(),
+            pdf_generator_url: "https://api.sec-api.io/filing-reader".to_string(),
+            download_api_url: "https://archive.sec-api.io".to_string(),
         }
     }
 
@@ -36,10 +38,10 @@ impl SecFilingClient {
         let start_time = std::time::Instant::now();
         info!("⚡ FAST downloading SEC filing: {} - {}", filing.company_name, filing.form_type);
 
-        // Build API request URL
+        // Build PDF Generator API request URL
         let download_url = format!(
             "{}?token={}&url={}",
-            self.base_url,
+            self.pdf_generator_url,
             self.api_key,
             urlencoding::encode(&filing.original_url)
         );
@@ -83,6 +85,78 @@ impl SecFilingClient {
             filename, 
             download_time.as_millis(),
             pdf_bytes.len() / 1024
+        );
+
+        Ok(file_path)
+    }
+
+    /// Download original filing content (HTML/XML/TXT) for better text extraction
+    pub async fn download_filing_original(&self, filing: &SecFiling) -> Result<String, SecFilingError> {
+        let start_time = std::time::Instant::now();
+        info!("⚡ ULTRA-FAST downloading original filing: {} - {}", filing.company_name, filing.form_type);
+
+        // Convert SEC.gov URL to archive.sec-api.io format
+        let download_url = if filing.original_url.contains("www.sec.gov/Archives/edgar/data/") {
+            let path_part = filing.original_url
+                .replace("https://www.sec.gov/Archives/edgar/data/", "")
+                .replace("/ix?doc=", "/"); // Remove inline XBRL parameters
+            
+            format!("{}?token={}", 
+                format!("{}/{}", self.download_api_url, path_part),
+                self.api_key
+            )
+        } else {
+            return Err(SecFilingError::DownloadFailed("Invalid SEC.gov URL format".to_string()));
+        };
+
+        // Download the original content
+        let response = self.client.get(&download_url).send().await
+            .map_err(|e| SecFilingError::DownloadFailed(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(SecFilingError::DownloadFailed(
+                format!("HTTP {}: {}", response.status(), response.text().await.unwrap_or_default())
+            ));
+        }
+
+        let content = response.text().await
+            .map_err(|e| SecFilingError::DownloadFailed(e.to_string()))?;
+
+        // Generate filename for original content
+        let safe_company = filing.company_name.replace(" ", "_").replace("/", "_");
+        let extension = if content.trim_start().starts_with("<?xml") || content.contains("<xml") {
+            "xml"
+        } else if content.trim_start().starts_with("<!DOCTYPE html") || content.contains("<html") {
+            "html"
+        } else {
+            "txt"
+        };
+
+        let filename = format!(
+            "{}_{}_{}_{}.{}",
+            safe_company,
+            filing.form_type,
+            filing.filing_date.replace("-", ""),
+            Uuid::new_v4().to_string()[..8].to_uppercase(),
+            extension
+        );
+
+        // Create downloads directory
+        let downloads_dir = "./downloads/sec-originals";
+        std::fs::create_dir_all(downloads_dir)
+            .map_err(|e| SecFilingError::StorageFailed(e.to_string()))?;
+
+        let file_path = format!("{}/{}", downloads_dir, filename);
+
+        // Save original content
+        std::fs::write(&file_path, &content)
+            .map_err(|e| SecFilingError::StorageFailed(e.to_string()))?;
+
+        let download_time = start_time.elapsed();
+        info!("⚡ BLAZING FAST original content downloaded: {} in {}ms ({} KB)", 
+            filename, 
+            download_time.as_millis(),
+            content.len() / 1024
         );
 
         Ok(file_path)
@@ -136,33 +210,45 @@ impl SecFilingClient {
         ]
     }
 
-    /// Download multiple filings for demo dataset creation
+    /// Download multiple filings for demo dataset creation - BLAZING FAST ⚡
     pub async fn create_demo_dataset(&self) -> Result<Vec<String>, SecFilingError> {
         let start_time = std::time::Instant::now();
-        info!("🚀 Creating BLAZING FAST demo dataset with SEC filings...");
+        info!("🚀 Creating BLAZING FAST demo dataset with SEC filings (18M+ available)...");
 
         let filings = self.get_demo_filings();
         let mut downloaded_files = Vec::new();
 
         for (i, filing) in filings.iter().enumerate() {
-            info!("📄 Downloading {}/{}: {} {}", i + 1, filings.len(), filing.company_name, filing.form_type);
+            info!("📄 LIGHTNING processing {}/{}: {} {}", i + 1, filings.len(), filing.company_name, filing.form_type);
             
-            match self.download_filing_as_pdf(filing).await {
+            // Download original content for better text extraction (HTML/XML/TXT)
+            match self.download_filing_original(filing).await {
                 Ok(file_path) => {
                     downloaded_files.push(file_path);
-                    info!("✅ Success: {}", filing.company_name);
+                    info!("⚡ ULTRA-FAST original: {}", filing.company_name);
                 }
                 Err(e) => {
-                    warn!("⚠️ Failed to download {}: {}", filing.company_name, e);
+                    warn!("⚠️ Original download failed for {}, trying PDF: {}", filing.company_name, e);
+                    
+                    // Fallback to PDF if original fails
+                    match self.download_filing_as_pdf(filing).await {
+                        Ok(file_path) => {
+                            downloaded_files.push(file_path);
+                            info!("✅ PDF fallback success: {}", filing.company_name);
+                        }
+                        Err(e2) => {
+                            warn!("⚠️ Both downloads failed for {}: {}", filing.company_name, e2);
+                        }
+                    }
                 }
             }
 
-            // Brief pause to be respectful to the API
-            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            // Brief pause to respect API rate limits (50 req/sec = 20ms spacing)
+            tokio::time::sleep(tokio::time::Duration::from_millis(25)).await;
         }
 
         let total_time = start_time.elapsed();
-        info!("⚡ LIGHTNING FAST demo dataset created: {} files in {:.1}s", 
+        info!("⚡ LIGHTNING FAST demo dataset created: {} files in {:.1}s (15,000 files/5min possible!)", 
             downloaded_files.len(), 
             total_time.as_secs_f32()
         );

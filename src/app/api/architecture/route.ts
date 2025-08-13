@@ -65,8 +65,11 @@ export async function POST(request: NextRequest) {
       case 'three-designs':
         // Generate 3 polished custom designs with internal quality control
         console.log('🏡 Generating 3 quality-controlled custom designs...');
-        result = await designSystem.generateThreeCustomDesigns(vision);
-        result.mode = 'three-designs';
+        const threeDesignsResult = await designSystem.generateThreeCustomDesigns(vision);
+        result = {
+          ...threeDesignsResult,
+          mode: 'three-designs'
+        };
         break;
 
       case 'quality-controlled':

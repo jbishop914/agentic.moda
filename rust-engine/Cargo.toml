@@ -45,6 +45,7 @@ chrono = { version = "0.4", features = ["serde"] }
 # Text Processing
 regex = "1.10"
 unicode-segmentation = "1.10"
+scraper = "0.19"  # HTML parsing and text extraction
 
 # HTTP Server for API
 axum = { version = "0.7", features = ["multipart"] }

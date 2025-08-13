@@ -7,6 +7,7 @@ mod storage;
 mod api;
 mod types;
 mod sec_filing_client;
+mod email_processor;
 
 use axum::{
     routing::{get, post},
@@ -21,12 +22,14 @@ use tracing_subscriber;
 use crate::document_processor::DocumentProcessor;
 use crate::file_watcher::FileWatcher;
 use crate::storage::Storage;
+use crate::email_processor::EmailProcessor;
 
 #[derive(Clone)]
 pub struct AppState {
     processor: Arc<DocumentProcessor>,
     storage: Arc<Mutex<Storage>>,
     file_watcher: Arc<FileWatcher>,
+    email_processor: Arc<EmailProcessor>,
 }
 
 #[tokio::main]
@@ -42,11 +45,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let processor = Arc::new(DocumentProcessor::new());
     let storage = Arc::new(Mutex::new(Storage::new("./data/ultraquery.db").await?));
     let file_watcher = Arc::new(FileWatcher::new(processor.clone(), storage.clone()));
+    let email_processor = Arc::new(EmailProcessor::new(processor.clone()));
 
     let app_state = AppState {
         processor,
         storage,
         file_watcher,
+        email_processor,
     };
 
     // Start file watching service
@@ -58,6 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/upload", post(api::upload_document))
         .route("/api/status", get(api::get_status))
         .route("/api/sec-demo", post(api::create_sec_demo_dataset))
+        .route("/api/email-demo", post(api::create_email_demo_dataset))
         .layer(CorsLayer::permissive())
         .with_state(app_state);
 
