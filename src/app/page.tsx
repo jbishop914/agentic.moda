@@ -37,7 +37,8 @@ import {
   PenTool,
   Search,
   Users,
-  Briefcase
+  Briefcase,
+  MapPin
 } from 'lucide-react';
 import WorkflowBuilder from '@/components/WorkflowBuilder';
 
@@ -490,12 +491,18 @@ export default function Home() {
 
               {/* Main Nav */}
               <nav className="flex items-center gap-1">
-                {['orchestrate', 'agents', 'creative', 'workflows', 'architecture'].map((view) => (
+                {['orchestrate', 'agents', 'creative', 'map', 'workflows', 'architecture'].map((view) => (
                   <button
                     key={view}
                     onClick={() => {
-                      setActiveView(view);
-                      setActiveSubView(view === 'orchestrate' ? 'playground' : '');
+                      if (view === 'map') {
+                        window.location.href = '/map';
+                      } else if (view === 'creative') {
+                        window.location.href = '/creative';
+                      } else {
+                        setActiveView(view);
+                        setActiveSubView(view === 'orchestrate' ? 'playground' : '');
+                      }
                     }}
                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
                       activeView === view
@@ -511,6 +518,11 @@ export default function Home() {
                     ) : view === 'creative' ? (
                       <span className="flex items-center gap-1.5">
                         <Image className="w-3.5 h-3.5" />
+                        {view}
+                      </span>
+                    ) : view === 'map' ? (
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5" />
                         {view}
                       </span>
                     ) : (
