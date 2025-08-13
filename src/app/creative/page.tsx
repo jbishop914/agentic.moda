@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronRight, Download, Image, Wand2, Palette, Sparkles, Upload, RefreshCw, Eye } from 'lucide-react';
+import { ChevronRight, Download, Image, Wand2, Palette, Sparkles, Upload, RefreshCw, Eye, FolderOpen } from 'lucide-react';
 
 interface GeneratedImage {
   url: string;
@@ -24,6 +24,7 @@ export default function CreativePage() {
   const [editStrength, setEditStrength] = useState(0.85);
   const [error, setError] = useState('');
   const [lastGeneratedImage, setLastGeneratedImage] = useState<GeneratedImage | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const models = {
     // Black Forest Labs Flux Models
@@ -167,6 +168,45 @@ export default function CreativePage() {
     if (lastGeneratedImage) {
       setEditingImage(lastGeneratedImage.url);
       setError('');
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    // Check file size (limit to 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image file must be smaller than 10MB');
+      return;
+    }
+
+    setUploadingImage(true);
+    setError('');
+
+    try {
+      // Convert file to data URL for immediate use
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        setEditingImage(dataUrl);
+        setUploadingImage(false);
+      };
+      reader.onerror = () => {
+        setError('Failed to read image file');
+        setUploadingImage(false);
+      };
+      reader.readAsDataURL(file);
+
+    } catch (error) {
+      setError('Failed to load image file');
+      setUploadingImage(false);
     }
   };
 
@@ -426,16 +466,63 @@ export default function CreativePage() {
                       className="w-full bg-[#0f1214] border border-slate-800 rounded-lg px-4 py-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-600"
                     />
                     
-                    {lastGeneratedImage && (
-                      <button
-                        onClick={loadGeneratedImage}
-                        className="w-full py-2 bg-gradient-to-r from-emerald-700/20 to-emerald-600/20 border border-emerald-600/30 text-emerald-400 rounded-lg font-medium hover:from-emerald-600/30 hover:to-emerald-500/30 transition-all flex items-center justify-center gap-2 text-sm"
-                      >
-                        <Upload className="w-4 h-4" />
-                        Load Generated Image ({lastGeneratedImage.model})
-                      </button>
-                    )}
+                    <div className="grid grid-cols-1 gap-2">
+                      {lastGeneratedImage && (
+                        <button
+                          onClick={loadGeneratedImage}
+                          className="py-2 bg-gradient-to-r from-emerald-700/20 to-emerald-600/20 border border-emerald-600/30 text-emerald-400 rounded-lg font-medium hover:from-emerald-600/30 hover:to-emerald-500/30 transition-all flex items-center justify-center gap-2 text-sm"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Load Generated Image ({lastGeneratedImage.model})
+                        </button>
+                      )}
+                      
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          disabled={uploadingImage}
+                        />
+                        <button
+                          disabled={uploadingImage}
+                          className="w-full py-2 bg-gradient-to-r from-blue-700/20 to-blue-600/20 border border-blue-600/30 text-blue-400 rounded-lg font-medium hover:from-blue-600/30 hover:to-blue-500/30 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {uploadingImage ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              Loading Image...
+                            </>
+                          ) : (
+                            <>
+                              <FolderOpen className="w-4 h-4" />
+                              Upload Image File
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
+                  
+                  {/* Image Preview */}
+                  {editingImage && (
+                    <div className="mt-4">
+                      <label className="text-xs uppercase tracking-wider text-gray-400 mb-2 block">
+                        Image Preview
+                      </label>
+                      <div className="relative max-w-sm">
+                        <img 
+                          src={editingImage} 
+                          alt="Reference image for editing"
+                          className="w-full h-40 object-cover rounded-lg border border-slate-700"
+                        />
+                        <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 text-white text-xs rounded">
+                          Reference
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-6">
