@@ -138,9 +138,9 @@ export class APIKeyManagers {
   static getReplicateManager(): APIKeyManager {
     if (!this.instances.has('replicate')) {
       const keys = [
-        process.env.REPLICATE_API_KEY || process.env.NEXT_PUBLIC_REPLICATE_API_KEY,
-        process.env.REPLICATE_API_KEY_2 || process.env.NEXT_PUBLIC_REPLICATE_API_KEY_2,
-        process.env.REPLICATE_API_KEY_3 || process.env.NEXT_PUBLIC_REPLICATE_API_KEY_3,
+        process.env.REPLICATE_API_KEY || process.env.REPLICATE_API_KEY1 || process.env.NEXT_PUBLIC_REPLICATE_API_KEY,
+        process.env.REPLICATE_API_KEY_2 || process.env.REPLICATE_API_KEY2 || process.env.NEXT_PUBLIC_REPLICATE_API_KEY_2,
+        process.env.REPLICATE_API_KEY_3 || process.env.REPLICATE_API_KEY3 || process.env.NEXT_PUBLIC_REPLICATE_API_KEY_3,
       ].filter(Boolean) as string[];
       
       this.instances.set('replicate', new APIKeyManager(keys, 100, 60000));
@@ -151,9 +151,9 @@ export class APIKeyManagers {
   static getOpenAIManager(): APIKeyManager {
     if (!this.instances.has('openai')) {
       const keys = [
-        process.env.OPENAI_API_KEY,
-        process.env.OPENAI_API_KEY_2,
-        process.env.OPENAI_API_KEY_3,
+        process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY1,
+        process.env.OPENAI_API_KEY_2 || process.env.OPENAI_API_KEY2,
+        process.env.OPENAI_API_KEY_3 || process.env.OPENAI_API_KEY3,
       ].filter(Boolean) as string[];
       
       this.instances.set('openai', new APIKeyManager(keys, 500, 60000));

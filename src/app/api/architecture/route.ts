@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { replicateImageTool } from '@/lib/tools/image-tools';
 
 export async function POST(request: NextRequest) {
+  console.log('Architecture API called');
+  
+  // Check if API keys are available
+  const replicateKey = process.env.REPLICATE_API_KEY || process.env.NEXT_PUBLIC_REPLICATE_API_KEY;
+  console.log('Replicate key exists:', !!replicateKey);
+  console.log('Replicate key starts with:', replicateKey?.substring(0, 5));
+  
+  if (!replicateKey) {
+    console.error('No Replicate API key found!');
+    return NextResponse.json(
+      { error: true, message: 'Replicate API key not configured on server' },
+      { status: 500 }
+    );
+  }
+  
   try {
     const body = await request.json();
     const { vision } = body;
