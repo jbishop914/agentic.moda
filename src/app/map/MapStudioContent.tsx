@@ -425,7 +425,7 @@ export default function MapStudioContent() {
       const Graphic = (await import('@arcgis/core/Graphic')).default;
       const Polygon = (await import('@arcgis/core/geometry/Polygon')).default;
       
-      let layer;
+      let layer: any = null;
       
       switch(layerType) {
         case 'parcels':

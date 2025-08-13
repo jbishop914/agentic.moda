@@ -77,12 +77,18 @@ export class AssistantOrchestrator {
    * Add a message to a thread
    */
   async addMessage(threadId: string, message: ThreadMessage): Promise<void> {
-    await this.client.beta.threads.messages.create(threadId, {
+    const params: OpenAI.Beta.Threads.MessageCreateParams = {
       role: message.role,
       content: message.content,
-      attachments: message.attachments,
       metadata: message.metadata,
-    } as OpenAI.Beta.Threads.MessageCreateParams);
+    };
+    
+    // Only add attachments if they exist
+    if (message.attachments) {
+      params.attachments = message.attachments;
+    }
+    
+    await this.client.beta.threads.messages.create(threadId, params);
   }
 
   /**
@@ -99,19 +105,27 @@ export class AssistantOrchestrator {
   ): Promise<OpenAI.Beta.Threads.Run | AsyncIterable<OpenAI.Beta.Assistants.AssistantStreamEvent>> {
     if (options?.stream) {
       // Return stream for real-time updates
-      return this.client.beta.threads.runs.stream(threadId, {
+      const streamParams: any = {
         assistant_id: assistantId,
-        additional_instructions: options.additional_instructions,
-        tools: options.tools,
-      });
+      };
+      
+      if (options.additional_instructions) {
+        streamParams.additional_instructions = options.additional_instructions;
+      }
+      
+      return this.client.beta.threads.runs.stream(threadId, streamParams);
     }
 
     // Regular run
-    const run = await this.client.beta.threads.runs.create(threadId, {
+    const runParams: OpenAI.Beta.Threads.RunCreateParams = {
       assistant_id: assistantId,
-      additional_instructions: options?.additional_instructions,
-      tools: options?.tools,
-    });
+    };
+    
+    if (options?.additional_instructions) {
+      runParams.additional_instructions = options.additional_instructions;
+    }
+    
+    const run = await this.client.beta.threads.runs.create(threadId, runParams);
 
     this.activeRuns.set(run.id, run);
     return run;
