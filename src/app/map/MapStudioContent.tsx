@@ -34,8 +34,11 @@ import {
   Save,
   Bot,
   Briefcase,
-  ChevronLeft
+  ChevronLeft,
+  Plus,
+  Database
 } from 'lucide-react';
+import LayersManager from '@/components/LayersManager';
 
 // Only import ArcGIS on client side
 if (typeof window !== 'undefined') {
@@ -138,6 +141,8 @@ export default function MapStudioContent() {
     heading: 45
   });
   const [showTransparencyControls, setShowTransparencyControls] = useState(false);
+  const [showLayersManager, setShowLayersManager] = useState(false);
+  const [addedLayers, setAddedLayers] = useState<__esri.Layer[]>([]);
 
   // Basemap options for different use cases - Using correct ArcGIS basemap IDs
   const basemapOptions = {
@@ -642,6 +647,24 @@ export default function MapStudioContent() {
     }
   };
 
+  // Handle adding layers from the layers manager
+  const handleAddLayerFromManager = (layer: __esri.Layer) => {
+    const view = (viewType === '3d' ? sceneRef : mapRef).current?.view;
+    if (!view) return;
+
+    try {
+      // Add layer to the map
+      view.map.add(layer);
+      
+      // Track the added layer
+      setAddedLayers(prev => [...prev, layer]);
+      
+      console.log(`Added layer: ${layer.title || layer.id}`);
+    } catch (error) {
+      console.error('Error adding layer to map:', error);
+    }
+  };
+
   // Show loading screen while initializing
   if (!mapReady) {
     return (
@@ -1063,6 +1086,19 @@ export default function MapStudioContent() {
                     showTransparencyControls ? 'text-purple-400' : 'text-slate-400 group-hover:text-slate-200'
                   }`} />
                 </button>
+
+                {/* Layers Manager Button */}
+                <button
+                  onClick={() => setShowLayersManager(!showLayersManager)}
+                  className={`p-2 bg-[#1a1d20]/80 hover:bg-[#1a1d20]/90 backdrop-blur-sm rounded-lg transition-all group ${
+                    showLayersManager ? 'bg-[#1a1d20]/90' : ''
+                  }`}
+                  title="Add Layers"
+                >
+                  <Database className={`w-4 h-4 transition-colors ${
+                    showLayersManager ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-200'
+                  }`} />
+                </button>
               </div>
 
               {/* Transparency Control Panel */}
@@ -1141,6 +1177,16 @@ export default function MapStudioContent() {
                   </div>
                 </div>
               )}
+
+              {/* Layers Manager Panel */}
+              {showLayersManager && (
+                <LayersManager
+                  onAddLayer={handleAddLayerFromManager}
+                  onClose={() => setShowLayersManager(false)}
+                  className="absolute top-14 right-4 z-20 w-96 max-h-[600px]"
+                />
+              )}
+
               {showLayers && (
                 <div className="absolute top-14 right-4 z-10 bg-[#1a1d20]/95 backdrop-blur-md rounded-lg p-3 w-64 shadow-2xl border border-slate-800/50">
                   <h3 className="text-xs font-medium text-slate-300 mb-3">Overlay Layers</h3>
