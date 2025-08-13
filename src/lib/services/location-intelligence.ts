@@ -383,13 +383,17 @@ export class LocationIntelligenceService {
     const side = Math.sqrt(area);
     const halfSide = side / 2;
     
+    // Check for null/undefined coordinates
+    const lng = center.longitude ?? 0;
+    const lat = center.latitude ?? 0;
+    
     // Simple rectangle for now
     const rings = [[
-      [center.longitude - halfSide/111111, center.latitude - halfSide/111111],
-      [center.longitude + halfSide/111111, center.latitude - halfSide/111111],
-      [center.longitude + halfSide/111111, center.latitude + halfSide/111111],
-      [center.longitude - halfSide/111111, center.latitude + halfSide/111111],
-      [center.longitude - halfSide/111111, center.latitude - halfSide/111111]
+      [lng - halfSide/111111, lat - halfSide/111111],
+      [lng + halfSide/111111, lat - halfSide/111111],
+      [lng + halfSide/111111, lat + halfSide/111111],
+      [lng - halfSide/111111, lat + halfSide/111111],
+      [lng - halfSide/111111, lat - halfSide/111111]
     ]];
     
     return new Polygon({ rings });

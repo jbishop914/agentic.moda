@@ -7,10 +7,12 @@ import SceneLayer from '@arcgis/core/layers/SceneLayer';
 import BuildingSceneLayer from '@arcgis/core/layers/BuildingSceneLayer';
 import IntegratedMeshLayer from '@arcgis/core/layers/IntegratedMeshLayer';
 import ElevationLayer from '@arcgis/core/layers/ElevationLayer';
+import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Ground from '@arcgis/core/Ground';
 import Camera from '@arcgis/core/Camera';
 import Point from '@arcgis/core/geometry/Point';
 import SpatialReference from '@arcgis/core/geometry/SpatialReference';
+import Graphic from '@arcgis/core/Graphic';
 
 /**
  * Create an optimized 3D scene for architectural visualization
@@ -215,12 +217,12 @@ export function addCustomBuilding(
   // This will be integrated with your architecture pipeline
   // to place generated buildings on the map
   
-  const buildingGraphic = {
+  const buildingGraphic = new Graphic({
     geometry: {
       type: 'polygon',
       rings: createBuildingFootprint(location, buildingSpec.area),
       spatialReference: { wkid: 4326 }
-    },
+    } as any,
     symbol: {
       type: 'polygon-3d',
       symbolLayers: [{
@@ -235,13 +237,16 @@ export function addCustomBuilding(
           size: 0.5
         }
       }]
-    },
+    } as any,
     attributes: buildingSpec
-  };
+  });
 
   // Add to graphics layer
-  const graphicsLayer = scene.layers.find(l => l.id === 'custom-buildings') ||
-    scene.add(new GraphicsLayer({ id: 'custom-buildings', title: 'Custom Buildings' }));
+  let graphicsLayer = scene.layers.find(l => l.id === 'custom-buildings') as GraphicsLayer;
+  if (!graphicsLayer) {
+    graphicsLayer = new GraphicsLayer({ id: 'custom-buildings', title: 'Custom Buildings' });
+    scene.add(graphicsLayer);
+  }
     
   graphicsLayer.add(buildingGraphic);
 }

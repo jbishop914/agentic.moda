@@ -14,7 +14,7 @@ interface GeneratedImage {
 export default function CreativePage() {
   const [activeTab, setActiveTab] = useState<'generate' | 'edit' | 'analyze'>('generate');
   const [prompt, setPrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState('flux-pro');
+  const [selectedModel, setSelectedModel] = useState('stable-diffusion');
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const [numImages, setNumImages] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -25,11 +25,11 @@ export default function CreativePage() {
   const [error, setError] = useState('');
 
   const models = {
-    // Black Forest Labs Flux Models
-    'flux-pro': { name: 'Flux Pro 1.1', description: 'Highest quality, best details', emoji: '⚡' },
-    'flux-dev': { name: 'Flux Dev', description: 'Good balance of speed and quality', emoji: '🚀' },
-    'flux-schnell': { name: 'Flux Schnell', description: 'Ultra-fast (4 steps)', emoji: '💨' },
-    'flux-realism': { name: 'Flux Realism', description: 'Photorealistic results', emoji: '📸' },
+    // Black Forest Labs Flux Models (Temporarily disabled for deployment)
+    // 'flux-pro': { name: 'Flux Pro 1.1', description: 'Highest quality, best details', emoji: '⚡' },
+    // 'flux-dev': { name: 'Flux Dev', description: 'Good balance of speed and quality', emoji: '🚀' },
+    // 'flux-schnell': { name: 'Flux Schnell', description: 'Ultra-fast (4 steps)', emoji: '💨' },
+    // 'flux-realism': { name: 'Flux Realism', description: 'Photorealistic results', emoji: '📸' },
     
     // Premium Models
     'ideogram-v3-turbo': { name: 'Ideogram V3 Turbo', description: 'Excellent text rendering', emoji: '✍️' },
@@ -236,7 +236,7 @@ export default function CreativePage() {
                   <div className="mb-4">
                     <h4 className="text-xs text-slate-500 mb-2">🔥 Black Forest Labs Flux</h4>
                     <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(models).filter(([key]) => key.startsWith('flux')).map(([key, model]) => (
+                      {Object.entries(models).filter(([key]) => key.startsWith('flux') && !key.includes('disabled')).map(([key, model]) => (
                         <button
                           key={key}
                           onClick={() => setSelectedModel(key)}

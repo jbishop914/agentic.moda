@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Map, 
   Globe, 
@@ -438,10 +438,10 @@ export default function MapStudioContent() {
           
           // Add some sample parcels around NYC
           const parcelSymbol = {
-            type: 'simple-fill',
-            color: [255, 255, 0, 0.1],
+            type: 'simple-fill' as const,
+            color: [255, 255, 0, 0.1] as [number, number, number, number],
             outline: {
-              color: [255, 200, 0],
+              color: [255, 200, 0] as [number, number, number],
               width: 2
             }
           };
@@ -965,15 +965,15 @@ export default function MapStudioContent() {
           </div>
           {viewType === '2d' ? (
             <>
-              <arcgis-map
-                ref={mapRef}
-                basemap={basemapOptions[currentBasemap as keyof typeof basemapOptions]}
-                center="-73.9,40.7"
-                zoom="12"
-                style={{ height: '100%', width: '100%' }}
-              >
-                {/* Remove default widgets */}
-              </arcgis-map>
+              <div style={{ height: '100%', width: '100%' }}>
+                {React.createElement('arcgis-map', {
+                  ref: mapRef,
+                  basemap: basemapOptions[currentBasemap as keyof typeof basemapOptions],
+                  center: "-73.9,40.7",
+                  zoom: "12",
+                  style: { height: '100%', width: '100%' }
+                })}
+              </div>
               
               {/* 2D Map Controls */}
               <div className="absolute top-4 right-4 z-10">
@@ -996,23 +996,23 @@ export default function MapStudioContent() {
               </div>
             </>
           ) : (
-            <arcgis-scene
-              ref={sceneRef}
-              basemap={basemapOptions[currentBasemap as keyof typeof basemapOptions]}
-              center="-73.9,40.7"
-              zoom="12"
-              tilt="65"
-              heading="45"
-              style={{ height: '100%', width: '100%' }}
-              ground="world-elevation"
-              qualityProfile="high"
-              environment-atmosphere-quality="high"
-              environment-lighting-type="sun"
-              environment-lighting-directShadowsEnabled="true"
-              environment-lighting-ambientOcclusionEnabled="true"
-            >
-              {/* Remove all the default widget positions to control them manually */}
-            </arcgis-scene>
+            <div style={{ height: '100%', width: '100%' }}>
+              {React.createElement('arcgis-scene', {
+                ref: sceneRef,
+                basemap: basemapOptions[currentBasemap as keyof typeof basemapOptions],
+                center: "-73.9,40.7",
+                zoom: "12",
+                tilt: "65",
+                heading: "45",
+                style: { height: '100%', width: '100%' },
+                ground: "world-elevation",
+                qualityProfile: "high",
+                'environment-atmosphere-quality': "high",
+                'environment-lighting-type': "sun",
+                'environment-lighting-directShadowsEnabled': "true",
+                'environment-lighting-ambientOcclusionEnabled': "true"
+              })}
+            </div>
           )}
 
           {/* Custom Compact Overlays */}
