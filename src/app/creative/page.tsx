@@ -14,7 +14,7 @@ interface GeneratedImage {
 export default function CreativePage() {
   const [activeTab, setActiveTab] = useState<'generate' | 'edit' | 'analyze'>('generate');
   const [prompt, setPrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState('stable-diffusion');
+  const [selectedModel, setSelectedModel] = useState('flux-pro');
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const [numImages, setNumImages] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -25,11 +25,11 @@ export default function CreativePage() {
   const [error, setError] = useState('');
 
   const models = {
-    // Black Forest Labs Flux Models (Temporarily disabled for deployment)
-    // 'flux-pro': { name: 'Flux Pro 1.1', description: 'Highest quality, best details', emoji: '⚡' },
-    // 'flux-dev': { name: 'Flux Dev', description: 'Good balance of speed and quality', emoji: '🚀' },
-    // 'flux-schnell': { name: 'Flux Schnell', description: 'Ultra-fast (4 steps)', emoji: '💨' },
-    // 'flux-realism': { name: 'Flux Realism', description: 'Photorealistic results', emoji: '📸' },
+    // Black Forest Labs Flux Models
+    'flux-pro': { name: 'Flux Pro 1.1', description: 'Highest quality, best details', emoji: '⚡' },
+    'flux-dev': { name: 'Flux Dev', description: 'Good balance of speed and quality', emoji: '🚀' },
+    'flux-schnell': { name: 'Flux Schnell', description: 'Ultra-fast (4 steps)', emoji: '💨' },
+    // 'flux-realism': { name: 'Flux Realism', description: 'Photorealistic results', emoji: '📸' }, // TODO: Get current version
     
     // Premium Models
     'ideogram-v3-turbo': { name: 'Ideogram V3 Turbo', description: 'Excellent text rendering', emoji: '✍️' },

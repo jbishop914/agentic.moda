@@ -68,7 +68,7 @@ export const replicateImageTool: Tool = {
       }> = {
         // Black Forest Labs Flux models
         'flux-pro': {
-          version: 'black-forest-labs/flux-pro:5a69536b5afae66a9e9de472a33e9ca0a6fa550bf17859df83c8fa61245e2a74',
+          version: 'black-forest-labs/flux-pro:1e237aa703bf3a8ab480d5b595563128807af649c50afc0b4f22a9174e90d1d6',
           inputMapper: (p) => ({
             prompt: p.prompt,
             aspect_ratio: p.aspectRatio || '1:1',
@@ -81,7 +81,7 @@ export const replicateImageTool: Tool = {
           }),
         },
         'flux-dev': {
-          version: 'black-forest-labs/flux-dev:f2ab8a5bfe79f02e0c8875ee6f352b7bc275334c2c339b50f2e3d6ba0e3e4820',
+          version: 'black-forest-labs/flux-dev:6e4a938f85952bdabcc15aa329178c4d681c52bf25a0342403287dc26944661d',
           inputMapper: (p) => ({
             prompt: p.prompt,
             aspect_ratio: p.aspectRatio || '1:1',
@@ -94,7 +94,7 @@ export const replicateImageTool: Tool = {
           }),
         },
         'flux-schnell': {
-          version: 'black-forest-labs/flux-schnell:f2ab8a5bfe79f02e0c8875ee6f352b7bc275334c2c339b50f2e3d6ba0e3e4820',
+          version: 'black-forest-labs/flux-schnell:c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e',
           inputMapper: (p) => ({
             prompt: p.prompt,
             aspect_ratio: p.aspectRatio || '1:1',
@@ -132,7 +132,7 @@ export const replicateImageTool: Tool = {
         },
         // SeedDream 3
         'seedream-3': {
-          version: 'seedream/seedream-v3:92c2c1e5f2e8d910e09e069c727973e3e858f6d5a83f0935f26e72c2e9387f36',
+          version: 'bytedance/seedream-3:e97385a576173b08a6a87546457582b01f65bf29a4dc00f1191e884894e0bc73',
           inputMapper: (p) => ({
             prompt: p.prompt,
             negative_prompt: p.negativePrompt || '',
