@@ -1,3 +1,11 @@
+/* ArcGIS Maps SDK CSS - Required for maps to render properly */
+@import 'https://js.arcgis.com/4.30/@arcgis/core/assets/esri/themes/dark/main.css';
+@import 'https://js.arcgis.com/map-components/4.30/arcgis-map-components.css';
+
+/* Optional: Calcite Design System for UI components */
+@import 'https://js.arcgis.com/calcite-components/2.8.5/calcite.css';
+
+/* Tailwind CSS */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
