@@ -6,6 +6,7 @@ mod file_watcher;
 mod storage;
 mod api;
 mod types;
+mod sec_filing_client;
 
 use axum::{
     routing::{get, post},
@@ -56,6 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/", get(health_check))
         .route("/api/upload", post(api::upload_document))
         .route("/api/status", get(api::get_status))
+        .route("/api/sec-demo", post(api::create_sec_demo_dataset))
         .layer(CorsLayer::permissive())
         .with_state(app_state);
 

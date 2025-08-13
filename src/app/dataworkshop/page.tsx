@@ -14,6 +14,8 @@ export default function DataworkshopPage() {
   const [uploads, setUploads] = useState<UploadResult[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [uploadSpeed, setUploadSpeed] = useState<number>(0)
+  const [isCreatingDemo, setIsCreatingDemo] = useState(false)
+  const [demoResults, setDemoResults] = useState<any>(null)
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const startTime = performance.now()
@@ -51,6 +53,33 @@ export default function DataworkshopPage() {
     
     setIsUploading(false)
   }, [])
+
+  const createSecDemo = async () => {
+    setIsCreatingDemo(true)
+    setDemoResults(null)
+    
+    try {
+      const startTime = performance.now()
+      const response = await fetch('http://127.0.0.1:8080/api/sec-demo', {
+        method: 'POST',
+      })
+      
+      const result = await response.json()
+      const totalTime = performance.now() - startTime
+      
+      setDemoResults(result)
+      console.log(`⚡ SEC demo dataset created in ${totalTime.toFixed(1)}ms`)
+      
+    } catch (error) {
+      console.error('Failed to create SEC demo dataset:', error)
+      setDemoResults({
+        success: false,
+        message: 'Failed to create demo dataset'
+      })
+    } finally {
+      setIsCreatingDemo(false)
+    }
+  }
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -96,6 +125,50 @@ export default function DataworkshopPage() {
             </div>
           </motion.div>
         )}
+
+        {/* SEC Demo Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="text-center mb-8"
+        >
+          <button
+            onClick={createSecDemo}
+            disabled={isCreatingDemo}
+            className={`
+              inline-flex items-center space-x-2 px-8 py-4 rounded-lg font-bold text-lg
+              transition-all duration-200 transform
+              ${isCreatingDemo 
+                ? 'bg-purple-600/50 text-purple-300 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white hover:scale-105 shadow-lg hover:shadow-purple-500/25'
+              }
+            `}
+          >
+            {isCreatingDemo ? (
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="text-2xl"
+                >
+                  ⚡
+                </motion.div>
+                <span>Creating SEC Demo Dataset...</span>
+              </>
+            ) : (
+              <>
+                <span className="text-2xl">🚀</span>
+                <span>Create SEC Filing Demo Dataset</span>
+                <span className="text-sm bg-green-400 text-black px-2 py-1 rounded">INSTANT</span>
+              </>
+            )}
+          </button>
+          
+          <p className="text-gray-400 text-sm mt-2">
+            Downloads & processes Apple, Tesla, Microsoft, NVIDIA + more SEC filings ⚡
+          </p>
+        </motion.div>
 
         {/* Upload Zone */}
         <motion.div
@@ -149,7 +222,58 @@ export default function DataworkshopPage() {
           </div>
         </motion.div>
 
-        {/* Results */}
+        {/* SEC Demo Results */}
+        <AnimatePresence>
+          {demoResults && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8"
+            >
+              <div className={`
+                p-6 rounded-lg border
+                ${demoResults.success ? 'bg-green-900/20 border-green-400' : 'bg-red-900/20 border-red-400'}
+              `}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-white flex items-center space-x-2">
+                    <span>{demoResults.success ? '🚀' : '❌'}</span>
+                    <span>SEC Demo Dataset Results</span>
+                  </h3>
+                  {demoResults.success && (
+                    <div className="text-green-400 font-bold">
+                      ⚡ {demoResults.processing_time_ms}ms TOTAL
+                    </div>
+                  )}
+                </div>
+                
+                <p className={`mb-4 ${demoResults.success ? 'text-green-300' : 'text-red-300'}`}>
+                  {demoResults.message}
+                </p>
+                
+                {demoResults.success && demoResults.results && (
+                  <div className="grid gap-2">
+                    {demoResults.results.map((result: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-800/50 p-3 rounded">
+                        <div className="flex items-center space-x-3">
+                          <span>{result.status === 'Completed' ? '✅' : '❌'}</span>
+                          <span className="text-white font-medium">{result.filename}</span>
+                          {result.document_id && (
+                            <span className="text-xs text-gray-400">ID: {result.document_id}</span>
+                          )}
+                        </div>
+                        <div className="text-green-400 font-bold text-sm">
+                          {result.processing_time_ms}ms
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Upload Results */}
         <AnimatePresence>
           {uploads.length > 0 && (
             <motion.div

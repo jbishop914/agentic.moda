@@ -3,6 +3,7 @@
 
 use crate::types::*;
 use crate::AppState;
+use crate::sec_filing_client::{SecFilingClient, ProcessingResult};
 use axum::{
     extract::{Multipart, State},
     http::StatusCode,
@@ -272,6 +273,55 @@ pub async fn batch_process(
     (StatusCode::OK, Json(response)).into_response()
 }
 
+/// Create SEC filing demo dataset - LIGHTNING FAST ⚡
+pub async fn create_sec_demo_dataset(State(app_state): State<AppState>) -> impl IntoResponse {
+    let start_time = std::time::Instant::now();
+    info!("🚀 FAST SEC demo dataset creation requested");
+
+    // Initialize SEC filing client with API key
+    let sec_client = SecFilingClient::new(
+        "25d256f9e56a8970bce0ecd26f2a47e140d8ceeddcc1d5004bf6ca1a80938a59".to_string()
+    );
+
+    // Process the demo dataset
+    match sec_client.process_demo_dataset(&app_state.processor, &app_state.storage).await {
+        Ok(results) => {
+            let total_time = start_time.elapsed();
+            let successful_count = results.iter().filter(|r| matches!(r.status, ProcessingStatus::Completed)).count();
+            
+            info!("⚡ BLAZING FAST SEC dataset created: {}/{} files in {:.1}s", 
+                successful_count, 
+                results.len(),
+                total_time.as_secs_f32()
+            );
+
+            let response = SecDemoResponse {
+                success: true,
+                message: format!("⚡ LIGHTNING FAST: Created {} SEC filings in {:.1}s", successful_count, total_time.as_secs_f32()),
+                total_files: results.len(),
+                successful_count,
+                failed_count: results.len() - successful_count,
+                processing_time_ms: total_time.as_millis() as u64,
+                results: results.into_iter().map(|r| SecProcessingResult {
+                    filename: std::path::Path::new(&r.file_path).file_name()
+                        .unwrap_or_default().to_string_lossy().to_string(),
+                    document_id: r.document_id,
+                    processing_time_ms: r.processing_time_ms,
+                    status: r.status,
+                    entities_found: r.entities_found,
+                    error_message: r.error,
+                }).collect(),
+            };
+
+            (StatusCode::OK, Json(response)).into_response()
+        }
+        Err(e) => {
+            error!("SEC demo dataset creation failed: {}", e);
+            create_error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("Failed to create SEC demo dataset: {}", e))
+        }
+    }
+}
+
 /// Helper function to create error responses
 fn create_error_response(status: StatusCode, message: &str) -> axum::response::Response {
     let error_response = ErrorResponse {
@@ -339,4 +389,25 @@ pub struct ErrorResponse {
     pub error: bool,
     pub message: String,
     pub code: u16,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct SecDemoResponse {
+    pub success: bool,
+    pub message: String,
+    pub total_files: usize,
+    pub successful_count: usize,
+    pub failed_count: usize,
+    pub processing_time_ms: u64,
+    pub results: Vec<SecProcessingResult>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct SecProcessingResult {
+    pub filename: String,
+    pub document_id: Option<Uuid>,
+    pub processing_time_ms: u64,
+    pub status: ProcessingStatus,
+    pub entities_found: usize,
+    pub error_message: Option<String>,
 }
