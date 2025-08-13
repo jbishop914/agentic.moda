@@ -338,50 +338,54 @@ export default function Home() {
     if (!architectureVision.trim()) return;
     
     setIsExecuting(true);
+    setError('');
     setStreamingText('Step 1: Parsing architectural vision...');
+    setArchitectureSpec(null);
+    setArchitectureImages({});
     
     try {
-      // Step 1: Parse vision to JSON
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-      const spec = {
-        project: {
-          name: 'Modern Home',
-          type: 'residential',
-          style: 'modern',
-          totalSquareFeet: 2000,
-          stories: 2
-        },
-        rooms: [
-          { name: 'Living Room', type: 'living_room', area: 400 },
-          { name: 'Kitchen', type: 'kitchen', area: 350 },
-          { name: 'Master Bedroom', type: 'bedroom', area: 300 },
-          { name: 'Bedroom 2', type: 'bedroom', area: 200 },
-          { name: 'Bedroom 3', type: 'bedroom', area: 200 },
-          { name: 'Home Office', type: 'office', area: 150 },
-        ]
-      };
-      setArchitectureSpec(spec);
+      console.log('Starting architecture pipeline...');
       
-      setStreamingText('Step 2: Generating floorplan...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setStreamingText('Step 3: Creating 3D renders...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simulate generated images
-      setArchitectureImages({
-        floorplan: '/api/placeholder/1024/1024',
-        exterior: '/api/placeholder/1920/1080',
-        interior: '/api/placeholder/1920/1080',
-        aerial: '/api/placeholder/1920/1080',
+      // Call the architecture API
+      const response = await fetch('/api/architecture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vision: architectureVision }),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to generate architecture design');
+      }
+
+      const data = await response.json();
+      console.log('Architecture API response:', data);
       
-      setStreamingText('Complete! Your architectural design is ready.');
+      if (!data.success) {
+        throw new Error(data.message || 'Generation failed');
+      }
+      
+      // Update UI with specification
+      setStreamingText('Step 2: Generating floorplan...');
+      setArchitectureSpec(data.specification);
+      
+      // Update images as they come in
+      setTimeout(() => {
+        setStreamingText('Step 3: Creating 3D renders...');
+      }, 1000);
+      
+      // Set the actual generated images
+      setArchitectureImages(data.images);
+      
+      setStreamingText(`Complete! Generated in ${data.generationTime}s`);
+      setTimeout(() => setStreamingText(''), 5000);
+      
     } catch (err: any) {
-      setError(err.message);
+      console.error('Architecture pipeline error:', err);
+      setError(err.message || 'Failed to generate architecture design');
+      setStreamingText('');
     } finally {
       setIsExecuting(false);
-      setTimeout(() => setStreamingText(''), 3000);
     }
   };
 
@@ -1300,33 +1304,65 @@ export default function Home() {
                       <div>
                         <div className="text-[10px] text-slate-600 mb-2">Floorplan</div>
                         <div className="aspect-square bg-slate-800 rounded-lg overflow-hidden">
-                          <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 animate-pulse flex items-center justify-center">
-                            <HomeIcon className="w-8 h-8 text-slate-600" />
-                          </div>
+                          {architectureImages.floorplan ? (
+                            <img 
+                              src={architectureImages.floorplan} 
+                              alt="Floorplan"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 animate-pulse flex items-center justify-center">
+                              <HomeIcon className="w-8 h-8 text-slate-600" />
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div>
                         <div className="text-[10px] text-slate-600 mb-2">Exterior View</div>
                         <div className="aspect-square bg-slate-800 rounded-lg overflow-hidden">
-                          <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 animate-pulse flex items-center justify-center">
-                            <Building className="w-8 h-8 text-slate-600" />
-                          </div>
+                          {architectureImages.exterior ? (
+                            <img 
+                              src={architectureImages.exterior} 
+                              alt="Exterior View"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 animate-pulse flex items-center justify-center">
+                              <Building className="w-8 h-8 text-slate-600" />
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div>
                         <div className="text-[10px] text-slate-600 mb-2">Interior View</div>
                         <div className="aspect-square bg-slate-800 rounded-lg overflow-hidden">
-                          <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 animate-pulse flex items-center justify-center">
-                            <Camera className="w-8 h-8 text-slate-600" />
-                          </div>
+                          {architectureImages.interior ? (
+                            <img 
+                              src={architectureImages.interior} 
+                              alt="Interior View"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 animate-pulse flex items-center justify-center">
+                              <Camera className="w-8 h-8 text-slate-600" />
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div>
                         <div className="text-[10px] text-slate-600 mb-2">Aerial View</div>
                         <div className="aspect-square bg-slate-800 rounded-lg overflow-hidden">
-                          <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 animate-pulse flex items-center justify-center">
-                            <Camera className="w-8 h-8 text-slate-600" />
-                          </div>
+                          {architectureImages.aerial ? (
+                            <img 
+                              src={architectureImages.aerial} 
+                              alt="Aerial View"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 animate-pulse flex items-center justify-center">
+                              <Camera className="w-8 h-8 text-slate-600" />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
