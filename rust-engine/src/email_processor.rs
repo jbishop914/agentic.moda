@@ -197,7 +197,7 @@ impl EmailProcessor {
     }
 
     /// Group emails into conversation threads - INSTANT ⚡
-    fn group_emails_into_threads(&self, emails: &[EmailMessage]) -> Vec<EmailThread> {
+    pub fn group_emails_into_threads(&self, emails: &[EmailMessage]) -> Vec<EmailThread> {
         let mut threads: HashMap<String, Vec<EmailMessage>> = HashMap::new();
         
         for email in emails {

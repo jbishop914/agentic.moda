@@ -36,6 +36,9 @@ tracing-subscriber = "0.3"
 # Email Processing
 mailparse = "0.14"
 
+# Microsoft Graph API Integration
+base64 = "0.21"  # For attachment processing
+
 # Database/Storage
 sqlite = "0.32"
 
