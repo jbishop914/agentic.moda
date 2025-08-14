@@ -30,28 +30,30 @@ export default function DocumentSearchInterface() {
     try {
       const text = await file.text();
       
-      const response = await fetch('/api/orchestrate', {
+      const response = await fetch('/api/upload-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `Upload this document with filename "${file.name}" and content: ${text}`,
-          tools: ['upload_document'],
-          pattern: 'single'
+          content: text,
+          filename: file.name
         })
       });
       
-      const data = await response.json();
+      const result = await response.json();
       
-      if (data.success && data.toolResults && data.toolResults[0]) {
-        const result = data.toolResults[0];
+      if (result.success) {
         setUploadedDocument({
           id: result.documentId,
           filename: result.filename,
           wordCount: result.wordCount
         });
+      } else {
+        console.error('Upload failed:', result.message);
+        alert('Upload failed: ' + result.message);
       }
     } catch (error) {
       console.error('Upload failed:', error);
+      alert('Upload failed. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -62,28 +64,32 @@ export default function DocumentSearchInterface() {
     
     setIsSearching(true);
     try {
-      const response = await fetch('/api/orchestrate', {
+      const response = await fetch('/api/search-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `Search document ${uploadedDocument.id} for the words: "married", "drunk", "noxious"`,
-          tools: ['search_document'],
-          pattern: 'single'
+          type: 'multiple-words',
+          documentId: uploadedDocument.id,
+          searchTerms: ['married', 'drunk', 'noxious'],
+          caseSensitive: false
         })
       });
       
-      const data = await response.json();
+      const result = await response.json();
       
-      if (data.success && data.toolResults && data.toolResults[0]) {
-        const result = data.toolResults[0];
+      if (result.success) {
         setSearchResults(prev => [...prev, {
           type: 'single',
           results: result.results,
           processingTimeMs: result.processingTimeMs
         }]);
+      } else {
+        console.error('Single agent search failed:', result.message);
+        alert('Search failed: ' + result.message);
       }
     } catch (error) {
       console.error('Single agent search failed:', error);
+      alert('Search failed. Please try again.');
     } finally {
       setIsSearching(false);
     }
@@ -94,22 +100,29 @@ export default function DocumentSearchInterface() {
     
     setIsSearching(true);
     try {
-      const response = await fetch('/api/orchestrate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: `Search for these words in document ${uploadedDocument.id}: married, drunk, noxious`,
-          tools: ['search_single_word'],
-          pattern: 'parallel',
-          parallelAgents: 3,
-          strategy: 'decompose'
-        })
-      });
+      const startTime = performance.now();
       
-      const data = await response.json();
+      // Run 3 search requests in parallel - one for each word
+      const searchPromises = ['married', 'drunk', 'noxious'].map(word => 
+        fetch('/api/search-document', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'single-word',
+            documentId: uploadedDocument.id,
+            word: word,
+            caseSensitive: false
+          })
+        }).then(response => response.json())
+      );
       
-      if (data.success && data.toolResults) {
-        const agentDetails = data.toolResults.map((result: any) => ({
+      const results = await Promise.all(searchPromises);
+      const totalTime = performance.now() - startTime;
+      
+      // Check if all searches succeeded
+      const successfulResults = results.filter(result => result.success);
+      if (successfulResults.length === results.length) {
+        const agentDetails = successfulResults.map((result: any) => ({
           word: result.word,
           count: result.count,
           processingTimeMs: result.processingTimeMs,
@@ -117,11 +130,8 @@ export default function DocumentSearchInterface() {
         }));
         
         const combinedResults: Record<string, number> = {};
-        let totalTime = 0;
-        
-        agentDetails.forEach((agent: any) => {
-          combinedResults[agent.word] = agent.count;
-          totalTime = Math.max(totalTime, agent.processingTimeMs);
+        successfulResults.forEach((result: any) => {
+          combinedResults[result.word] = result.count;
         });
         
         setSearchResults(prev => [...prev, {
@@ -130,9 +140,13 @@ export default function DocumentSearchInterface() {
           processingTimeMs: totalTime,
           agentDetails
         }]);
+      } else {
+        console.error('Some parallel searches failed');
+        alert('Some searches failed. Please try again.');
       }
     } catch (error) {
       console.error('Parallel agent search failed:', error);
+      alert('Parallel search failed. Please try again.');
     } finally {
       setIsSearching(false);
     }
