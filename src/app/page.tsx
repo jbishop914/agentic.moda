@@ -41,6 +41,7 @@ import {
   MapPin
 } from 'lucide-react';
 import WorkflowBuilder from '@/components/WorkflowBuilder';
+import DocumentSearchInterface from '@/components/DocumentSearchInterface';
 
 // Tool definitions with real functionality
 const AVAILABLE_TOOLS = [
@@ -85,6 +86,28 @@ const AVAILABLE_TOOLS = [
     description: 'Convert between formats (JSON, CSV, etc)',
     icon: '🔄',
     category: 'data'
+  },
+  // Document Search Tools
+  { 
+    id: 'upload_document', 
+    name: 'Upload Document', 
+    description: 'Upload a document for searching',
+    icon: '📤',
+    category: 'search'
+  },
+  { 
+    id: 'search_document', 
+    name: 'Search Document', 
+    description: 'Search for words in uploaded documents',
+    icon: '🔍',
+    category: 'search'
+  },
+  { 
+    id: 'search_single_word', 
+    name: 'Search Single Word', 
+    description: 'Search for one word (parallel optimized)',
+    icon: '🎯',
+    category: 'search'
   },
   // New GitHub tools
   { 
@@ -491,7 +514,7 @@ export default function Home() {
 
               {/* Main Nav */}
               <nav className="flex items-center gap-1">
-                {['orchestrate', 'agents', 'creative', 'map', 'workflows', 'architecture'].map((view) => (
+                {['orchestrate', 'agents', 'creative', 'map', 'workflows', 'architecture', 'search-test'].map((view) => (
                   <button
                     key={view}
                     onClick={() => {
@@ -526,6 +549,11 @@ export default function Home() {
                       <span className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5" />
                         {view}
+                      </span>
+                    ) : view === 'search-test' ? (
+                      <span className="flex items-center gap-1.5">
+                        <Search className="w-3.5 h-3.5" />
+                        search test
                       </span>
                     ) : (
                       view
@@ -1402,6 +1430,13 @@ export default function Home() {
         {activeView === 'workflows' && (
           <div className="h-[calc(100vh-180px)]">
             <WorkflowBuilder />
+          </div>
+        )}
+
+        {/* Document Search Performance Test */}
+        {activeView === 'search-test' && (
+          <div className="h-[calc(100vh-180px)] overflow-y-auto">
+            <DocumentSearchInterface />
           </div>
         )}
       </main>

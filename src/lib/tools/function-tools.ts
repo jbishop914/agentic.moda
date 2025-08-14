@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import { GITHUB_TOOLS } from './github-tools';
 import { IMAGE_GENERATION_TOOLS } from './image-tools';
+import { DOCUMENT_SEARCH_TOOLS } from './document-search-tools';
 
 // Base tool interface
 export interface Tool {
@@ -361,6 +362,7 @@ export const AVAILABLE_TOOLS: Record<string, Tool> = {
   transform_data: dataTransformTool,
   ...GITHUB_TOOLS,
   ...IMAGE_GENERATION_TOOLS,
+  ...DOCUMENT_SEARCH_TOOLS,
 };
 
 // Helper function to convert tools for OpenAI format
