@@ -290,14 +290,14 @@ export const fluxKontextTool: Tool = {
     }
 
     try {
-      // Using the real Flux Fill Pro for image editing (Kontext-style functionality)
-      const modelVersion = 'black-forest-labs/flux-fill-pro:97f6c7c2a49b8691fc8ded36d6005af9b90d78cb98dd22f3693f4b71b5ad31db';
+      // Using Flux Pro which supports img2img functionality
+      const modelVersion = 'black-forest-labs/flux-pro:1e237aa703bf3a8ab480d5b595563128807af649c50afc0b4f22a9174e90d1d6';
       
       const input = {
         prompt: params.prompt,
         image: params.imageUrl,
-        mask: null, // No mask for full image transformation
-        prompt_strength: params.strength,
+        prompt_strength: params.strength || 0.8,
+        aspect_ratio: '1:1',
         output_format: 'webp',
         output_quality: 95,
         safety_tolerance: 2,
@@ -352,7 +352,12 @@ export const fluxKontextTool: Tool = {
         predictionId: result.id,
       };
     } catch (error: any) {
-      return { error: true, message: error.message };
+      console.error('Flux Kontext error:', error);
+      return { 
+        error: true, 
+        message: `Flux Kontext failed: ${error.message}`,
+        details: error.response ? await error.response.text() : error.toString()
+      };
     }
   },
 };
