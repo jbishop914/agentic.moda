@@ -20,7 +20,13 @@ export default function DocumentSearchInterface() {
   const [isUploading, setIsUploading] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchType, setSearchType] = useState<'single' | 'parallel'>('single');
+  
+  // Sandbox controls for experimentation
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [selectedTools, setSelectedTools] = useState<string[]>(['search_document']);
+  const [selectedPattern, setSelectedPattern] = useState('single');
+  const [parallelCount, setParallelCount] = useState(3);
+  const [strategy, setStrategy] = useState('decompose');
   
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -59,94 +65,47 @@ export default function DocumentSearchInterface() {
     }
   }, []);
   
-  const runSingleAgentSearch = async () => {
-    if (!uploadedDocument) return;
-    
-    setIsSearching(true);
-    try {
-      const response = await fetch('/api/search-document', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'multiple-words',
-          documentId: uploadedDocument.id,
-          searchTerms: ['married', 'drunk', 'noxious'],
-          caseSensitive: false
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setSearchResults(prev => [...prev, {
-          type: 'single',
-          results: result.results,
-          processingTimeMs: result.processingTimeMs
-        }]);
-      } else {
-        console.error('Single agent search failed:', result.message);
-        alert('Search failed: ' + result.message);
-      }
-    } catch (error) {
-      console.error('Single agent search failed:', error);
-      alert('Search failed. Please try again.');
-    } finally {
-      setIsSearching(false);
-    }
-  };
-  
-  const runParallelAgentSearch = async () => {
-    if (!uploadedDocument) return;
+  const runExperiment = async () => {
+    if (!uploadedDocument || !customPrompt.trim()) return;
     
     setIsSearching(true);
     try {
       const startTime = performance.now();
       
-      // Run 3 search requests in parallel - one for each word
-      const searchPromises = ['married', 'drunk', 'noxious'].map(word => 
-        fetch('/api/search-document', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'single-word',
-            documentId: uploadedDocument.id,
-            word: word,
-            caseSensitive: false
-          })
-        }).then(response => response.json())
-      );
+      const response = await fetch('/api/orchestrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: customPrompt.replace('{documentId}', uploadedDocument.id),
+          tools: selectedTools,
+          pattern: selectedPattern,
+          parallelAgents: selectedPattern === 'parallel' ? parallelCount : 1,
+          strategy: selectedPattern === 'parallel' ? strategy : undefined
+        })
+      });
       
-      const results = await Promise.all(searchPromises);
+      const data = await response.json();
       const totalTime = performance.now() - startTime;
       
-      // Check if all searches succeeded
-      const successfulResults = results.filter(result => result.success);
-      if (successfulResults.length === results.length) {
-        const agentDetails = successfulResults.map((result: any) => ({
-          word: result.word,
-          count: result.count,
-          processingTimeMs: result.processingTimeMs,
-          agentId: result.agentId
-        }));
-        
-        const combinedResults: Record<string, number> = {};
-        successfulResults.forEach((result: any) => {
-          combinedResults[result.word] = result.count;
-        });
-        
-        setSearchResults(prev => [...prev, {
-          type: 'parallel',
-          results: combinedResults,
-          processingTimeMs: totalTime,
-          agentDetails
-        }]);
-      } else {
-        console.error('Some parallel searches failed');
-        alert('Some searches failed. Please try again.');
-      }
+      // Store the full experiment result for learning
+      setSearchResults(prev => [...prev, {
+        type: selectedPattern as 'single' | 'parallel',
+        results: data.toolResults || {},
+        processingTimeMs: totalTime,
+        experimentData: {
+          prompt: customPrompt,
+          tools: selectedTools,
+          pattern: selectedPattern,
+          parallelCount: selectedPattern === 'parallel' ? parallelCount : 1,
+          strategy: selectedPattern === 'parallel' ? strategy : undefined,
+          fullResponse: data,
+          timestamp: new Date().toISOString()
+        }
+      }]);
+      
     } catch (error) {
-      console.error('Parallel agent search failed:', error);
-      alert('Parallel search failed. Please try again.');
+      console.error('Experiment failed:', error);
+      alert('Experiment failed. Check console for details.');
     } finally {
       setIsSearching(false);
     }
@@ -156,8 +115,20 @@ export default function DocumentSearchInterface() {
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-white mb-4">Document Search Performance Test</h1>
-        <p className="text-gray-400">Compare single vs parallel agent search performance</p>
+        <h1 className="text-3xl font-bold text-white mb-4">Agent Experimentation Sandbox</h1>
+        <p className="text-gray-400">Learn how to prompt agents and explore parallel processing patterns</p>
+      </div>
+
+      {/* Learning Tips */}
+      <div className="bg-blue-900/20 border border-blue-400/30 rounded-lg p-4">
+        <h3 className="text-blue-300 font-semibold mb-2">🧠 Learning Tips</h3>
+        <ul className="text-sm text-blue-200 space-y-1">
+          <li>• <strong>Start simple:</strong> Try single agent with basic search prompts</li>
+          <li>• <strong>Compare patterns:</strong> Run same prompt with single vs parallel to see differences</li>
+          <li>• <strong>Experiment with tools:</strong> Different tools (search_document vs search_single_word) have different behaviors</li>
+          <li>• <strong>Parallel strategies:</strong> "decompose" breaks tasks intelligently, "power" duplicates work, "perspectives" adds viewpoints</li>
+          <li>• <strong>Watch the console:</strong> Full agent responses and errors show up there</li>
+        </ul>
       </div>
       
       {/* Upload Section */}
@@ -206,128 +177,206 @@ export default function DocumentSearchInterface() {
         )}
       </div>
       
-      {/* Search Controls */}
+      {/* Agent Experimentation Sandbox */}
       {uploadedDocument && (
         <div className="bg-slate-800 rounded-lg p-6">
           <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
             <Search className="w-5 h-5" />
-            Search Performance Test
+            Agent Experimentation Sandbox
           </h2>
           
-          <div className="space-y-4">
-            <p className="text-gray-300">
-              Search for: <span className="font-mono bg-slate-700 px-2 py-1 rounded">"married"</span>, {' '}
-              <span className="font-mono bg-slate-700 px-2 py-1 rounded">"drunk"</span>, {' '}
-              <span className="font-mono bg-slate-700 px-2 py-1 rounded">"noxious"</span>
-            </p>
-            
-            <div className="flex gap-4">
-              <button
-                onClick={runSingleAgentSearch}
-                disabled={isSearching}
-                className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 px-6 py-3 rounded-lg font-medium text-white transition-colors"
-              >
-                <Users className="w-4 h-4" />
-                Single Agent Search
-              </button>
-              
-              <button
-                onClick={runParallelAgentSearch}
-                disabled={isSearching}
-                className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 px-6 py-3 rounded-lg font-medium text-white transition-colors"
-              >
-                <Zap className="w-4 h-4" />
-                Parallel Agent Search (3 agents)
-              </button>
+          <div className="space-y-6">
+            {/* Prompt Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Custom Prompt (use {'{documentId}'} as placeholder)
+              </label>
+              <textarea
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                placeholder="Example: Search document {documentId} for the words 'married', 'drunk', and 'noxious'. Count each occurrence."
+                className="w-full h-24 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-400 focus:outline-none"
+              />
             </div>
-            
-            {isSearching && (
-              <div className="text-center text-blue-400">
-                <Clock className="w-4 h-4 inline animate-spin mr-2" />
-                Searching...
+
+            {/* Tool Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Available Tools</label>
+              <div className="flex gap-2 flex-wrap">
+                {['search_document', 'search_single_word', 'upload_document'].map(tool => (
+                  <button
+                    key={tool}
+                    onClick={() => {
+                      if (selectedTools.includes(tool)) {
+                        setSelectedTools(prev => prev.filter(t => t !== tool));
+                      } else {
+                        setSelectedTools(prev => [...prev, tool]);
+                      }
+                    }}
+                    className={`px-3 py-1 rounded-md text-xs ${
+                      selectedTools.includes(tool)
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    {tool}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Pattern & Parallel Settings */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Execution Pattern</label>
+                <select
+                  value={selectedPattern}
+                  onChange={(e) => setSelectedPattern(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-purple-400 focus:outline-none"
+                >
+                  <option value="single">Single Agent</option>
+                  <option value="parallel">Parallel Agents</option>
+                </select>
+              </div>
+
+              {selectedPattern === 'parallel' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Agent Count</label>
+                  <input
+                    type="number"
+                    value={parallelCount}
+                    onChange={(e) => setParallelCount(parseInt(e.target.value) || 1)}
+                    min="1"
+                    max="10"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-purple-400 focus:outline-none"
+                  />
+                </div>
+              )}
+            </div>
+
+            {selectedPattern === 'parallel' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Parallel Strategy</label>
+                <select
+                  value={strategy}
+                  onChange={(e) => setStrategy(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-purple-400 focus:outline-none"
+                >
+                  <option value="decompose">Smart Decomposition</option>
+                  <option value="perspectives">Multi-Perspective</option>
+                  <option value="power">Raw Power</option>
+                </select>
               </div>
             )}
+
+            {/* Run Experiment Button */}
+            <button
+              onClick={runExperiment}
+              disabled={isSearching || !customPrompt.trim()}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 px-6 py-3 rounded-lg font-medium text-white transition-colors"
+            >
+              {isSearching ? (
+                <>
+                  <Clock className="w-4 h-4 animate-spin" />
+                  Running Experiment...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4" />
+                  Run Experiment
+                </>
+              )}
+            </button>
+
+            {/* Quick Examples */}
+            <div className="pt-4 border-t border-slate-700">
+              <p className="text-sm text-gray-400 mb-2">Quick Examples:</p>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  'Search document {documentId} for "married", "drunk", "noxious"',
+                  'Find all instances of "God" in document {documentId}',
+                  'Count occurrences of character names in {documentId}',
+                ].map((example, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCustomPrompt(example)}
+                    className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-xs text-gray-300 rounded"
+                  >
+                    Example {idx + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
       
-      {/* Results */}
+      {/* Experiment Results */}
       {searchResults.length > 0 && (
         <div className="bg-slate-800 rounded-lg p-6">
           <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
             <BarChart3 className="w-5 h-5" />
-            Search Results
+            Experiment Results
           </h2>
           
-          <div className="space-y-4">
+          <div className="space-y-6">
             {searchResults.map((result, index) => (
               <div key={index} className={`p-4 rounded-lg border-l-4 ${
                 result.type === 'single' ? 'bg-blue-900/20 border-blue-400' : 'bg-purple-900/20 border-purple-400'
               }`}>
+                {/* Experiment Header */}
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-white">
-                    {result.type === 'single' ? 'Single Agent' : 'Parallel Agents (3)'}
+                    Experiment #{index + 1} - {result.type === 'single' ? 'Single Agent' : `Parallel (${(result as any).experimentData?.parallelCount || 'N/A'} agents)`}
                   </h3>
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="w-4 h-4" />
                     <span className="font-mono">{result.processingTimeMs.toFixed(1)}ms</span>
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-3 gap-4 mb-3">
-                  {Object.entries(result.results).map(([word, count]) => (
-                    <div key={word} className="text-center">
-                      <div className="font-mono text-lg font-bold text-white">{count}</div>
-                      <div className="text-sm text-gray-400">"{word}"</div>
+
+                {/* Experiment Configuration */}
+                {(result as any).experimentData && (
+                  <div className="mb-4 p-3 bg-slate-700/30 rounded-lg">
+                    <p className="text-xs text-gray-400 mb-2">Experiment Config:</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div><span className="text-gray-400">Tools:</span> <span className="text-white font-mono">{(result as any).experimentData.tools.join(', ')}</span></div>
+                      <div><span className="text-gray-400">Pattern:</span> <span className="text-white font-mono">{(result as any).experimentData.pattern}</span></div>
+                      {(result as any).experimentData.strategy && (
+                        <div><span className="text-gray-400">Strategy:</span> <span className="text-white font-mono">{(result as any).experimentData.strategy}</span></div>
+                      )}
+                      <div><span className="text-gray-400">Timestamp:</span> <span className="text-white font-mono">{new Date((result as any).experimentData.timestamp).toLocaleTimeString()}</span></div>
                     </div>
-                  ))}
-                </div>
+                    <div className="mt-2">
+                      <span className="text-gray-400 text-xs">Prompt:</span>
+                      <p className="text-white text-sm font-mono bg-slate-800/50 p-2 rounded mt-1">"{(result as any).experimentData.prompt}"</p>
+                    </div>
+                  </div>
+                )}
                 
-                {result.agentDetails && (
-                  <div className="mt-3 pt-3 border-t border-gray-600">
-                    <p className="text-sm text-gray-400 mb-2">Agent Details:</p>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      {result.agentDetails.map((agent, idx) => (
-                        <div key={idx} className="bg-slate-700/50 p-2 rounded">
-                          <div className="font-mono text-purple-300">Agent {idx + 1}</div>
-                          <div className="text-gray-300">"{agent.word}": {agent.count}</div>
-                          <div className="text-gray-400">{agent.processingTimeMs.toFixed(1)}ms</div>
-                        </div>
-                      ))}
+                {/* Results Display */}
+                <div className="mb-3">
+                  <p className="text-sm text-gray-400 mb-2">Raw Results:</p>
+                  <pre className="text-xs bg-slate-900/50 p-3 rounded-lg text-gray-300 overflow-auto max-h-40">
+                    {JSON.stringify(result.results, null, 2)}
+                  </pre>
+                </div>
+
+                {/* Success/Error Status */}
+                {(result as any).experimentData?.fullResponse && (
+                  <div className="mt-3 pt-3 border-t border-slate-600">
+                    <p className="text-sm text-gray-400 mb-2">Agent Response Status:</p>
+                    <div className={`inline-flex items-center px-2 py-1 rounded text-xs ${
+                      (result as any).experimentData.fullResponse.success 
+                        ? 'bg-green-900/30 text-green-400 border border-green-400/30'
+                        : 'bg-red-900/30 text-red-400 border border-red-400/30'
+                    }`}>
+                      {(result as any).experimentData.fullResponse.success ? '✓ Success' : '✗ Error'}
                     </div>
                   </div>
                 )}
               </div>
             ))}
-            
-            {searchResults.length >= 2 && (
-              <div className="mt-4 p-4 bg-green-900/20 border border-green-400 rounded-lg">
-                <h4 className="font-semibold text-green-400 mb-2">Performance Comparison</h4>
-                {(() => {
-                  const singleResult = searchResults.find(r => r.type === 'single');
-                  const parallelResult = searchResults.find(r => r.type === 'parallel');
-                  
-                  if (singleResult && parallelResult) {
-                    const speedup = (singleResult.processingTimeMs / parallelResult.processingTimeMs).toFixed(2);
-                    const improvement = (((singleResult.processingTimeMs - parallelResult.processingTimeMs) / singleResult.processingTimeMs) * 100).toFixed(1);
-                    
-                    return (
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-300">Speedup: </span>
-                          <span className="font-mono font-bold text-green-400">{speedup}x faster</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-300">Improvement: </span>
-                          <span className="font-mono font-bold text-green-400">{improvement}% reduction</span>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-            )}
           </div>
         </div>
       )}

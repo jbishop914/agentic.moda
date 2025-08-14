@@ -6,7 +6,10 @@
       "Bash(curl:*)",
       "Bash(export PATH=\"$HOME/.cargo/bin:$PATH\")",
       "Bash(cargo check:*)",
-      "Bash(timeout 5 cargo run)"
+      "Bash(timeout 5 cargo run)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": [],
