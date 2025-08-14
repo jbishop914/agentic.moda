@@ -692,7 +692,7 @@ Be thorough and constructive - our reputation depends on quality.`;
     qualityScore: number;
     reviewHistory: Array<{ iteration: number; score: number; feedback: string }>;
   }> {
-    let currentSpec: ArchitecturalSpec;
+    let currentSpec: ArchitecturalSpec | null = null;
     let currentFloorplan: string = '';
     let currentRenders: Array<{ type: string; url: string }> = [];
     let iteration = 0;
@@ -719,7 +719,7 @@ Be thorough and constructive - our reputation depends on quality.`;
 ${lastReview.feedback}
 
 CURRENT SPECIFICATION:
-${JSON.stringify(currentSpec, null, 2)}
+${JSON.stringify(currentSpec || {}, null, 2)}
 
 ORIGINAL CLIENT VISION:
 "${originalVision}"
@@ -911,7 +911,7 @@ Improve the specification to address the feedback while staying true to the clie
     const style = spec.project.style;
     const sqft = spec.project.totalSquareFeet;
     const stories = spec.project.stories;
-    const bedrooms = spec.rooms.filter(r => r.type === 'bedroom' || r.type === 'master_bedroom').length;
+    const bedrooms = spec.rooms.filter(r => r.type === 'bedroom').length;
     const bathrooms = spec.rooms.filter(r => r.type === 'bathroom').length;
     
     return `${style} ${stories}-story home with ${sqft} sq ft featuring ${bedrooms} bedrooms and ${bathrooms} bathrooms. This ${variation} emphasizes ${style.toLowerCase()} architectural elements with modern functionality.`;

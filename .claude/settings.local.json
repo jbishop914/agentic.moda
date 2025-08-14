@@ -9,6 +9,7 @@
       "Bash(timeout 5 cargo run)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "defaultMode": "acceptEdits"
   }
 }

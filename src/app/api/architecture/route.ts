@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ArchitectureDesignSystem } from '@/lib/agents/architecture-agent';
+import { replicateImageTool } from '@/lib/tools/image-tools';
 
 export async function POST(request: NextRequest) {
   console.log('🏗️ Architecture API called - Enhanced Pipeline');
@@ -100,8 +101,8 @@ export async function POST(request: NextRequest) {
         });
         
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-        result.generationTime = duration;
-        result.mode = 'full';
+        (result as any).generationTime = duration;
+        (result as any).mode = 'full';
         
         console.log(`✅ Full pipeline completed in ${duration}s`);
         break;
