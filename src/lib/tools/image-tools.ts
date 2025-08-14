@@ -290,18 +290,18 @@ export const fluxKontextTool: Tool = {
     }
 
     try {
-      // Flux Kontext Pro model
-      const modelVersion = 'black-forest-labs/flux-1.1-pro:5a6f532b7d174ce157a0bb5e0b3c2a46e5c176f6e82f6c9a1968ac25a1dddc4f';
+      // Using the real Flux Fill Pro for image editing (Kontext-style functionality)
+      const modelVersion = 'black-forest-labs/flux-fill-pro:97f6c7c2a49b8691fc8ded36d6005af9b90d78cb98dd22f3693f4b71b5ad31db';
       
       const input = {
         prompt: params.prompt,
         image: params.imageUrl,
+        mask: null, // No mask for full image transformation
         prompt_strength: params.strength,
-        guidance_scale: params.guidanceScale,
-        num_inference_steps: params.steps,
         output_format: 'webp',
         output_quality: 95,
-        ...(params.seed && { seed: params.seed }),
+        safety_tolerance: 2,
+        seed: params.seed,
       };
 
       // Create prediction
