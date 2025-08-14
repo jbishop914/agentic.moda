@@ -4,6 +4,8 @@
 
 A production-ready platform for designing, building, and orchestrating sophisticated AI agent systems. Featuring OpenAI's latest patterns including parallel tool execution, structured outputs, persistent memory via Assistants API, and intelligent feedback loops.
 
+> **Latest Update:** Cleaned up for production deployment - removed standalone components, fixed TypeScript issues.
+
 ## 🌟 Key Features
 
 ### Core Capabilities
